@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create item</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb"><a href="items.html">Items</a> · New</div>
+      <h1>Create a new item</h1>
+      <p class="sub">For spares that don't have an SAP item code yet. Once created, the code can be picked normally in Manual PR and Quotation.</p>
+    </div>
+    <div class="actions">
+      <a class="btn" href="items.html">Cancel</a>
+      <button class="btn primary" id="submit" type="button"><span class="mi">add_box</span>Create item</button>
+    </div>
+  </div>
+
+  <div class="alert info">Created here as <b>Super Admin</b>. Items made by an admin are recorded under their own name. This form doesn't post to SAP in the wireframe.</div>
+
+  <div class="split mt">
+    <div class="card">
+      <div class="card-h"><h2>Item details</h2></div>
+      <div class="card-b">
+        <div class="form f3">
+          <div class="field"><label>State <span class="req">*</span></label><select id="state"></select></div>
+          <div class="field full"><label>Item description <span class="req">*</span></label><input id="desc" placeholder="e.g. O2 sensor cell, Mindray SV300 (compatible)"></div>
+          <div class="field"><label>Item group</label><select id="group"></select></div>
+          <div class="field"><label>UoM</label><select id="uom"></select></div>
+          <div class="field"><label>HSN / SAC code</label><input id="hsn" placeholder="Optional"></div>
+          <div class="field"><label>Make / manufacturer</label><input id="make" placeholder="Optional"></div>
+          <div class="field"><label>Model / part no.</label><input id="model" placeholder="Optional"></div>
+          <div class="field"><label>Minimum stock level</label><input id="min" type="number" min="0" placeholder="Optional"></div>
+          <div class="field full"><label>Reference PI ID</label><input id="ref" list="piList" placeholder="Optional — the PI that needs this item" autocomplete="off"><datalist id="piList"></datalist>
+            <div class="hint">Links the new code back to the request that needed it.</div></div>
+          <div class="field full"><label>Technical specification</label><textarea id="spec" rows="3" placeholder="Size, material, rating, compatibility…"></textarea></div>
+        </div>
+      </div>
+      <div class="card-f"><a class="btn" href="items.html">Cancel</a><button class="btn primary" id="submit2" type="button">Create item</button></div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Check first</h2></div>
+        <div class="card-b"><p class="small muted" style="margin-top:0">Type a description to see close matches already in SAP, so you don't create a duplicate.</p>
+          <div class="list" id="similar"><div class="card-b faint small">Start typing a description…</div></div></div>
+      </div>
+      <div class="card" id="doneCard" style="display:none">
+        <div class="card-h"><h2>Item created</h2></div>
+        <div class="card-b stack" style="gap:10px"><div class="alert good" id="doneMsg" style="margin:0"></div>
+          <div class="row"><a class="btn" href="items.html">Back to items</a><a class="btn" href="item-create.html">Create another</a></div></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="../assets/mock-data.js"></script>
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var opt = function (a) { return a.map(function (x) { return "<option>" + x + "</option>"; }).join(""); };
+  $("state").innerHTML = opt(SA.ITEM_STATES); $("group").innerHTML = opt(SA.ITEM_GROUPS); $("uom").innerHTML = opt(SA.ITEM_UOMS);
+  $("piList").innerHTML = ((window.CX_MOCK && CX_MOCK.calls) || []).map(function (r) { return '<option value="' + r.id + '">' + (r.desc || "").replace(/"/g, "") + "</option>"; }).join("");
+
+  // closest existing items, matched on shared words
+  $("desc").addEventListener("input", function () {
+    var w = $("desc").value.toLowerCase().split(/\W+/).filter(function (x) { return x.length > 2; });
+    var hits = !w.length ? [] : SA.ITEM_MASTER.map(function (i) { var h = i.desc.toLowerCase(); return [w.filter(function (x) { return h.indexOf(x) >= 0; }).length / w.length, i]; })
+      .filter(function (x) { return x[0] > 0.3; }).sort(function (a, b) { return b[0] - a[0]; }).slice(0, 4);
+    $("similar").innerHTML = hits.map(function (h) { return '<div class="it" style="cursor:default"><div class="grow"><div class="t1 mono">' + h[1].code + '</div><div class="t2">' + h[1].desc + '</div></div><span class="badge">' + Math.round(h[0] * 100) + "%</span></div>"; }).join("")
+      || '<div class="card-b faint small">' + (w.length ? "No close matches — safe to create." : "Start typing a description…") + "</div>";
+  });
+
+  function create() {
+    if (!$("desc").value.trim()) { CX.toast("Item description is required"); return; }
+    var next = Math.max.apply(null, SA.ITEM_MASTER.map(function (i) { return +i.code.slice(2); })) + 3, d = new Date(); d.setHours(0, 0, 0, 0);
+    var item = { code: "I-" + next, desc: $("desc").value.trim(), group: $("group").value, uom: $("uom").value, hsn: $("hsn").value || "—", state: $("state").value, by: "Nikhil (Super Admin)", kind: "super", date: d, status: "Syncing", ref: $("ref").value.trim() };
+    SA.ITEM_MASTER.unshift(item); SA.log("action", item.code, "Created item “" + item.desc + "”");
+    $("doneMsg").innerHTML = "<b>" + item.code + "</b> created. SAP is confirming the code (demo — nothing stored).";
+    $("doneCard").style.display = ""; CX.toast("Item " + item.code + " created (demo)");
+  }
+  $("submit").addEventListener("click", create); $("submit2").addEventListener("click", create);
+</script>
+</body>
+</html>

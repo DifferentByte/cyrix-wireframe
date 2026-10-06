@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PO Creation & Approval</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Orders · Handbook §13</div>
+      <h1>PO creation & approval</h1>
+      <p class="sub">AOS generates the PO request from the finalised vendor. Approval follows the value-based matrix, and the approved PO is pushed to SAP.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" data-toast="PO preview opened (PDF)">Preview PO</button>
+      <button class="btn primary" id="send">Submit for approval</button>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>PO request · draft</h2><span class="badge info tag">From PR-26-1192 · RFQ-26-0861</span></div>
+        <div class="card-b form f3">
+          <div class="field"><label>Vendor</label><input value="Kovai Medical Tech (V-10457)" readonly></div>
+          <div class="field"><label>Vendor GSTIN</label><input class="mono" value="33AAFCK2231P1Z4" readonly></div>
+          <div class="field"><label>Purpose</label><input value="Standby" readonly></div>
+          <div class="field"><label>Delivery location</label><select><option>Kochi warehouse</option><option>Chennai warehouse</option><option>Direct to site</option></select></div>
+          <div class="field"><label>Delivery by</label><input type="date" value="2026-10-06"></div>
+          <div class="field"><label>Payment terms</label><select id="terms"><option value="0">15 days credit</option><option value="0">30 days credit</option><option value="30">30% advance, balance on delivery</option><option value="100">100% advance</option></select></div>
+          <div class="field"><label>Warranty period</label><input value="Shelf life 24 months"></div>
+          <div class="field"><label>Barcode / equipment ref</label><input value="— (standby stock)"></div>
+          <div class="field"><label>Ticket ID</label><input value="—"></div>
+          <div class="field"><label>PR / WO reference</label><input class="mono" value="PR-26-1192" readonly></div>
+          <div class="field"><label>Zone / executive</label><input value="South · Priya K." readonly></div>
+          <div class="field"><label>SAP series</label><select><option>PO-SRV-2627</option><option>PO-SPR-2627</option></select></div>
+        </div>
+        <div class="table-wrap" style="border-top:1px solid var(--line)"><table class="t">
+          <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">GST</th><th class="num">Amount</th></tr></thead>
+          <tbody id="lines">
+            <tr><td><span class="mono">SP-DEF-00310</span> Defib pads adult, Philips M3713A</td><td class="num"><input type="number" value="20" style="width:70px;text-align:right" data-q></td><td class="num"><input type="number" value="2900" style="width:90px;text-align:right" data-r></td><td class="num">12%</td><td class="num" data-a></td></tr>
+          </tbody>
+          <tfoot><tr><td colspan="4" class="right"><b>PO value (incl. GST)</b></td><td class="num"><b id="total"></b></td></tr></tfoot>
+        </table></div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h3>Approval matrix</h3><span class="sec-no">configurable</span></div>
+        <div class="table-wrap"><table class="t" id="matrix">
+          <thead><tr><th>PO value</th><th>Approvers</th></tr></thead>
+          <tbody>
+            <tr data-max="200000"><td>Up to ₹2 L</td><td>Purchase Manager</td></tr>
+            <tr data-max="1000000"><td>₹2 L – ₹10 L</td><td>PM + VP</td></tr>
+            <tr data-max="Infinity"><td>Above ₹10 L</td><td>PM + VP + Director</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Approval route</h3></div>
+        <div class="card-b"><ul class="tl" id="route"></ul></div>
+      </div>
+      <div class="alert info small" id="adv">No advance needed under these payment terms.</div>
+      <div class="card">
+        <div class="card-h"><h3>Awaiting my approval</h3></div>
+        <div class="list">
+          <div class="it"><div class="grow"><div class="t1 mono">PO-REQ-0551</div><div class="t2">MedServe · O₂ cell ×1 · ₹20,608</div></div><button class="btn sm good" data-toast="Approved and pushed to SAP as PO-26-3340">Approve</button></div>
+          <div class="it"><div class="grow"><div class="t1 mono">PO-REQ-0548</div><div class="t2">Siemens · CMC CT 12 m · ₹11.8 L</div></div><span class="badge warn">Director</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+<script>
+(function(){
+  var q = document.querySelector("[data-q]"), r = document.querySelector("[data-r]"), terms = document.getElementById("terms");
+  function calc(){
+    var net = (+q.value||0)*(+r.value||0), tot = net*1.12;
+    document.querySelector("[data-a]").textContent = CX.inr(net);
+    document.getElementById("total").textContent = CX.inr(tot);
+    var rows = document.querySelectorAll("#matrix tbody tr"), hit;
+    rows.forEach(function(tr){ tr.classList.remove("sel"); });
+    for (var i=0;i<rows.length;i++){ if (tot <= +rows[i].dataset.max){ hit=i; break; } }
+    rows[hit].classList.add("sel");
+    var who = [["Purchase Manager","Suresh B."],["VP – Operations","Latha M."],["Director","K. Varghese"]].slice(0, hit+1);
+    document.getElementById("route").innerHTML =
+      '<li class="done"><b>Prepared</b> by Priya K.<div class="when">Draft</div></li>' +
+      who.map(function(w,i){ return '<li'+(i===0?' class="now"':'')+'><b>'+w[0]+'</b>, '+w[1]+'</li>'; }).join("") +
+      '<li><b>Push to SAP</b>: PO number synced back to AOS</li>';
+    var pct = +terms.value;
+    document.getElementById("adv").innerHTML = pct
+      ? "<b>Advance applicable:</b> " + pct + "% = " + CX.inr(tot*pct/100) + ". After approval an AP down payment request is raised in SAP (§14)."
+      : "No advance needed under these payment terms.";
+  }
+  [q,r,terms].forEach(function(e){ e.addEventListener("input", calc); e.addEventListener("change", calc); });
+  calc();
+  document.getElementById("send").addEventListener("click", function(){ CX.toast("PO request sent to " + document.querySelector("#route li.now b").textContent); });
+})();
+</script>
+</body>
+</html>

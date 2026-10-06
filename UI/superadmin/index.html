@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Super Admin</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Super Admin · Overview</div>
+      <h1>Access control</h1>
+      <p class="sub">Decide who can see and do what. Create roles, assign employees to them, and fine-tune access for individual people.</p>
+    </div>
+    <div class="actions">
+      <a class="btn" href="admin-edit.html"><span class="mi">admin_panel_settings</span>Create admin</a>
+      <a class="btn" href="roles.html"><span class="mi">badge</span>New role</a>
+      <a class="btn primary" href="employee-edit.html"><span class="mi">person_add</span>Add employee</a>
+    </div>
+  </div>
+
+  <div class="grid g4" id="kpis"></div>
+
+  <div class="split mt">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Recent permission changes</h2><div class="tag row" style="gap:8px"><a class="btn sm primary" href="roles.html"><span class="mi">tune</span>Change permissions</a><a class="btn sm" href="audit-log.html">Full audit log</a></div></div>
+        <div class="table-wrap">
+          <table class="t">
+            <thead><tr><th>When</th><th>Target</th><th>Change</th></tr></thead>
+            <tbody id="recent"></tbody>
+          </table>
+        </div>
+        <div class="card-b small muted"><b>How to change access:</b> open a <a href="roles.html">role</a> to tick what everyone with it can see and do, or open an <a href="employees.html">employee</a> to add or hide a module for just that person. Every change lands here and in the audit log.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Pending PIs by team</h2><a class="tag btn sm" href="pi-workload.html">PI workload</a></div>
+        <div class="card-b" id="teamPend"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Roles at a glance</h2><a class="tag btn sm" href="access-matrix.html">Access overview</a></div>
+        <div class="table-wrap">
+          <table class="t">
+            <thead><tr><th>Role</th><th>Modules</th><th class="num">Employees</th></tr></thead>
+            <tbody id="roleRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Preview a role</h2></div>
+        <div class="card-b">
+          <p class="small muted" style="margin-top:0">See the sidebar an employee would get. Also available from the “View as” menu in the top bar.</p>
+          <div class="row" id="previewBtns"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var active = SA.EMPLOYEES.filter(function (e) { return e.status === "active"; }).length;
+  var kp = [
+    ["Employees", SA.EMPLOYEES.length, active + " active", "groups"],
+    ["Admin accounts", SA.ADMINS.length, SA.ADMINS.filter(function (a) { return a.status === "active"; }).length + " active · you are the Super Admin", "admin_panel_settings"],
+    ["Teams", SA.TEAMS.length, SA.ROLES.length + " roles · 6 modules governed", "diversity_3"],
+    ["Changes this week", SA.AUDIT.length, "See audit log", "history"]
+  ];
+  document.getElementById("kpis").innerHTML = kp.map(function (k) {
+    return '<div class="card kpi"><div class="l">' + k[0] + '</div><span class="mi kpi-ic">' + k[3] + '</span><div class="v">' + k[1] + '</div><div class="d">' + k[2] + "</div></div>";
+  }).join("");
+
+  var tmax = Math.max.apply(null, SA.TEAMS.map(function (t) { return SA.teamStats(t.id).pending; }));
+  document.getElementById("teamPend").innerHTML = SA.TEAMS.map(function (t) {
+    var s = SA.teamStats(t.id);
+    return '<div class="hb"><a href="team-detail.html?team=' + t.id + '">' + t.name + '</a><div class="track"><i class="' + (s.overdue ? "hot" : "") + '" style="width:' + s.pending / tmax * 100 + '%"></i></div><span class="n">' + s.pending + "</span></div>";
+  }).join("") + '<p class="small faint" style="margin:10px 0 0">Red = team has overdue PIs (waiting more than 3 days).</p>';
+
+  // each target links to where its permissions are edited: a role → the permission matrix, an employee → their access overrides
+  function targetLink(a) {
+    var r = SA.ROLES.filter(function (x) { return x.name === a.target; })[0], e = SA.EMPLOYEES.filter(function (x) { return x.name === a.target; })[0];
+    var ad = SA.ADMINS.filter(function (x) { return x.name === a.target; })[0];
+    if (a.type === "admin" && ad) return '<a href="admin-edit.html?id=' + ad.id + '"><b>' + a.target + "</b></a>";
+    if (a.type === "role" && r) return '<a href="role-edit.html?role=' + r.id + '"><b>' + a.target + "</b></a>";
+    if (e) return '<a href="employee-edit.html?id=' + e.id + '"><b>' + a.target + "</b></a>";
+    return "<b>" + a.target + "</b>";
+  }
+  document.getElementById("recent").innerHTML = SA.AUDIT.slice(0, 5).map(function (a) {
+    return "<tr><td class='nowrap'>" + a.when + "</td><td><span class='badge " + (a.type === "role" ? "info" : "") + "'>" + a.type + "</span> " + targetLink(a) + "</td><td>" + a.change + "</td></tr>";
+  }).join("");
+
+  document.getElementById("roleRows").innerHTML = SA.ROLES.map(function (r) {
+    var n = SA.EMPLOYEES.filter(function (e) { return e.role === r.id; }).length;
+    return '<tr><td><a href="role-edit.html?role=' + r.id + '"><b>' + r.name + "</b></a></td><td>" + SA.chips(Object.keys(r.perms)) + '</td><td class="num">' + n + "</td></tr>";
+  }).join("");
+
+  document.getElementById("previewBtns").innerHTML = SA.ROLES.map(function (r) {
+    return '<a class="btn sm" href="role-view.html?role=' + r.id + '">' + r.name + "</a>";
+  }).join("");
+</script>
+</body>
+</html>

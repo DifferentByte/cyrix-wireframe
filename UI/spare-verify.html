@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spare Verification</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Requisition · Handbook §3</div>
+      <h1>Spare requirement verification</h1>
+      <p class="sub">The field engineer uploads a photo of the part they need. AI matches it against SAP items, and the engineer confirms the match before submitting.</p>
+    </div>
+  </div>
+
+  <div class="card"><div class="card-b">
+    <div class="steps" id="steps">
+      <div class="st done">Engineer request</div>
+      <div class="st done">Image upload</div>
+      <div class="st now">AI item matching</div>
+      <div class="st">Existing item search</div>
+      <div class="st">Technical verification</div>
+      <div class="st">ITR / PR</div>
+    </div>
+  </div></div>
+
+  <div class="split-l mt">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h3>Request</h3><span class="badge info tag">Current call</span></div>
+        <div class="card-b">
+          <dl class="kv">
+            <dt>Engineer</dt><dd>Arun Mathew (FE-KL-114)</dd>
+            <dt>Ticket</dt><dd class="mono">TKT-KL-2409-11873</dd>
+            <dt>Barcode</dt><dd class="mono">CYX-KL-004512</dd>
+            <dt>Equipment</dt><dd>Mindray SV300 Ventilator</dd>
+            <dt>Site</dt><dd>DH Ernakulam · ICU-2</dd>
+            <dt>Requested</dt><dd>“O2 sensor for ventilator”</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Uploaded field image</h3></div>
+        <div class="card-b">
+          <div class="img" data-part="sensor" style="background:linear-gradient(135deg,var(--surface-2),var(--accent-soft))"><span class="cap">field_photo_o2cell.jpg · 2.1 MB</span></div>
+          <div class="drop mt-s small">Add another angle, label or nameplate photo</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>AI match results</h2><span class="badge ai tag">3 candidates · 1.8 s</span></div>
+        <div class="card-b tight">
+          <div class="list" id="cands">
+            <div class="it on" data-i="0">
+              <div class="img" data-part="sensor" style="width:72px;aspect-ratio:4/3"></div>
+              <div class="grow"><div class="t1">SP-VEN-00231 · O₂ sensor cell, Mindray SV300/SV600</div><div class="t2">OEM 040-001829-00 · Make: Mindray · Stock: 0 (2 in transit)</div></div>
+              <div style="width:130px"><div class="row between small"><span>Similarity</span><b>94%</b></div><div class="bar good"><i style="width:94%"></i></div></div>
+            </div>
+            <div class="it" data-i="1">
+              <div class="img" data-part="sensor" style="width:72px;aspect-ratio:4/3"></div>
+              <div class="grow"><div class="t1">SP-VEN-00232 · O₂ sensor cell, compatible (MOX-2 type)</div><div class="t2">Make: City Technology · Compatible equivalent · Stock: 4 (Chennai WH)</div></div>
+              <div style="width:130px"><div class="row between small"><span>Similarity</span><b>81%</b></div><div class="bar"><i style="width:81%"></i></div></div>
+            </div>
+            <div class="it" data-i="2">
+              <div class="img" data-part="valve" style="width:72px;aspect-ratio:4/3"></div>
+              <div class="grow"><div class="t1">SP-VEN-00118 · Flow sensor, SV300</div><div class="t2">Make: Mindray · Different function, similar housing</div></div>
+              <div style="width:130px"><div class="row between small"><span>Similarity</span><b>46%</b></div><div class="bar warn"><i style="width:46%"></i></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid g2">
+        <div class="card">
+          <div class="card-h"><h3>Compare</h3></div>
+          <div class="card-b">
+            <div class="grid g2" style="gap:10px">
+              <div><div class="img" data-part="sensor" style="background:linear-gradient(135deg,var(--surface-2),var(--accent-soft))"><span class="cap">Field</span></div></div>
+              <div><div class="img" data-part="sensor" id="cmpImg"><span class="cap">SAP</span></div></div>
+            </div>
+            <table class="t mt-s">
+              <tbody id="cmpTbl">
+                <tr><td class="muted">Item code</td><td class="mono">SP-VEN-00231</td></tr>
+                <tr><td class="muted">Make / model</td><td>Mindray · 040-001829-00</td></tr>
+                <tr><td class="muted">Compatible with</td><td>SV300, SV600, SV800</td></tr>
+                <tr><td class="muted">Last purchase</td><td>₹18,400 · Jun 2026</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>System checks</h3></div>
+          <div class="card-b">
+            <ul class="checks">
+              <li class="ok"><span class="ic">✓</span>Item code & description<span class="r">Match</span></li>
+              <li class="ok"><span class="ic">✓</span>Image similarity<span class="r">94%</span></li>
+              <li class="ok"><span class="ic">✓</span>Make / model<span class="r">Mindray</span></li>
+              <li class="ok"><span class="ic">✓</span>Compatible with parent<span class="r">SV300</span></li>
+              <li class="ok"><span class="ic">✓</span>CAMC / AMC / warranty<span class="r">Warranty</span></li>
+              <li class="warn"><span class="ic">!</span>Previous purchase history<span class="r">Jun 2026 · ₹18.4k</span></li>
+              <li class="warn"><span class="ic">!</span>Previous ITR / IPT<span class="r">ITR-KL-8830 · 42 d ago</span></li>
+              <li class="ok"><span class="ic">✓</span>Equivalent items in stock<span class="r">4 × SP-VEN-00232</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-b row between">
+          <label class="check"><input type="checkbox" id="confirm"> I confirm the selected item is the part I need</label>
+          <div class="row">
+            <a class="btn" href="new-item.html">None of these match → New item</a>
+            <button class="btn primary" id="submit" disabled>Submit requirement</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+<script>
+(function(){
+  var DATA = [
+    ["SP-VEN-00231","Mindray · 040-001829-00","SV300, SV600, SV800","₹18,400 · Jun 2026","sensor"],
+    ["SP-VEN-00232","City Technology · MOX-2","SV300, SV600, Dräger Savina","₹9,850 · Apr 2026","sensor"],
+    ["SP-VEN-00118","Mindray · 040-000974-00","SV300","₹22,100 · Jan 2026","valve"]
+  ];
+  document.getElementById("cands").addEventListener("click", function(e){
+    var it = e.target.closest(".it"); if(!it) return;
+    document.querySelectorAll("#cands .it").forEach(function(x){ x.classList.toggle("on", x===it); });
+    var d = DATA[+it.dataset.i];
+    document.getElementById("cmpTbl").innerHTML =
+      '<tr><td class="muted">Item code</td><td class="mono">'+d[0]+'</td></tr>'+
+      '<tr><td class="muted">Make / model</td><td>'+d[1]+'</td></tr>'+
+      '<tr><td class="muted">Compatible with</td><td>'+d[2]+'</td></tr>'+
+      '<tr><td class="muted">Last purchase</td><td>'+d[3]+'</td></tr>';
+    var img = document.getElementById("cmpImg");
+    img.querySelector("svg").remove(); img.setAttribute("data-part", d[4]); CX.paintImages(img.parentNode);
+  });
+  var cb = document.getElementById("confirm"), sb = document.getElementById("submit");
+  cb.addEventListener("change", function(){ sb.disabled = !cb.checked; });
+  sb.addEventListener("click", function(){
+    var s = document.querySelectorAll("#steps .st");
+    s[2].className="st done"; s[3].className="st done"; s[4].className="st now";
+    CX.toast("Submitted. Sent to the technical team for verification.");
+  });
+})();
+</script>
+</body>
+</html>

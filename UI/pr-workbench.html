@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PR Workbench</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Sourcing · Handbook §6, §7</div>
+      <h1>PR workbench & vendor sourcing</h1>
+      <p class="sub">Approved PRs for your zone. The system shows previous purchase details automatically, then AI suggests vendors to send the RFQ to.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>My PR queue · South zone</h2>
+      <div class="tag row"><select style="width:auto"><option>All categories</option><option>Item</option><option>Service</option></select><select style="width:auto"><option>All stages</option><option>New</option><option>RFQ sent</option><option>Quotes in</option></select></div>
+    </div>
+    <div class="table-wrap"><table class="t">
+      <thead><tr><th>PR</th><th>Item / service</th><th>Purpose</th><th>Ref</th><th class="num">Qty</th><th>Need by</th><th>History</th><th>Stage</th></tr></thead>
+      <tbody>
+        <tr class="sel"><td class="mono">PR-26-1231</td><td>O₂ sensor cell · SP-VEN-00231</td><td>Current call</td><td class="mono small">TKT-…11873</td><td class="num">1</td><td>4 Oct</td><td><span class="badge good">3 prev. POs</span></td><td><span class="badge info">New</span></td></tr>
+        <tr><td class="mono">PR-26-1224</td><td>Infusion pump battery · SP-INF-00077</td><td>Offline call</td><td class="mono small">CYX-TN-011207</td><td class="num">2</td><td>6 Oct</td><td><span class="badge good">RC active</span></td><td><span class="badge info">New</span></td></tr>
+        <tr><td class="mono">PR-26-1207</td><td>CMC – Siemens Somatom CT (12 m)</td><td>AMC/CMC</td><td class="mono small">CYX-KL-000102</td><td class="num">1</td><td>15 Oct</td><td><span class="badge good">Renewal</span></td><td><span class="badge warn">RFQ sent</span></td></tr>
+        <tr><td class="mono">PR-26-1192</td><td>Defib pads adult · SP-DEF-00310</td><td>Standby</td><td class="mono small">—</td><td class="num">20</td><td>10 Oct</td><td><span class="badge">None</span></td><td><span class="badge good">Quotes in (3)</span></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="grid g2 mt">
+    <div class="card">
+      <div class="card-h"><h2>Previous purchase</h2><span class="sec-no">§6</span><span class="badge good tag">Auto-fetched from SAP</span></div>
+      <div class="card-b">
+        <dl class="kv">
+          <dt>Last price</dt><dd>₹18,400 / unit</dd>
+          <dt>Last date</dt><dd>12 Jun 2026</dd>
+          <dt>Vendor</dt><dd>MedServe Biomedical (V-10231)</dd>
+          <dt>Quotation</dt><dd><a href="#">QT-MS-2206.pdf</a></dd>
+          <dt>PO</dt><dd class="mono">PO-26-2871</dd>
+          <dt>Quantity</dt><dd>2</dd>
+          <dt>Delivery time</dt><dd>5 days (promised 7)</dd>
+          <dt>Payment terms</dt><dd>30 days credit</dd>
+          <dt>Warranty</dt><dd>6 months</dd>
+          <dt>Vendor performance</dt><dd><span class="badge good">91%</span></dd>
+          <dt>Tech approval</dt><dd>R. Nair · 10 Jun 2026</dd>
+          <dt>Rate contract</dt><dd><span class="badge">None for this item</span></dd>
+        </dl>
+      </div>
+      <div class="card-b" style="border-top:1px solid var(--line)">
+        <h3 style="margin-bottom:8px">Reconfirm with previous vendor</h3>
+        <div class="grid g2" style="gap:8px">
+          <label class="check"><input type="checkbox" checked> Current price</label>
+          <label class="check"><input type="checkbox" checked> Availability</label>
+          <label class="check"><input type="checkbox"> Delivery time</label>
+          <label class="check"><input type="checkbox"> Warranty</label>
+          <label class="check"><input type="checkbox"> Payment terms</label>
+          <label class="check"><input type="checkbox"> Validity of previous rate</label>
+        </div>
+        <div class="row mt"><button class="btn" data-toast="Reconfirmation email sent to MedServe Biomedical">Email previous vendor</button><button class="btn" data-toast="Call logged">Log phone call</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h2>AI vendor sourcing</h2><span class="sec-no">§7</span><span class="badge ai tag">6 found</span></div>
+      <div class="card-b tight">
+        <div class="table-wrap"><table class="t">
+          <thead><tr><th></th><th>Vendor</th><th>Source</th><th>Score</th></tr></thead>
+          <tbody>
+            <tr><td><input type="checkbox" checked></td><td>MedServe Biomedical<div class="small muted">Kochi · in SAP</div></td><td><span class="badge">Previous vendor</span></td><td><span class="badge good">91%</span></td></tr>
+            <tr><td><input type="checkbox" checked></td><td>Aarav Healthcare Spares<div class="small muted">Chennai · in SAP</div></td><td><span class="badge">Vendor database</span></td><td><span class="badge warn">69%</span></td></tr>
+            <tr><td><input type="checkbox" checked></td><td>Kovai Medical Tech<div class="small muted">Coimbatore · in SAP</div></td><td><span class="badge">Vendor database</span></td><td><span class="badge good">84%</span></td></tr>
+            <tr><td><input type="checkbox"></td><td>BioSense Instruments<div class="small muted">Bengaluru · not in SAP</div></td><td><span class="badge ai">IndiaMART</span></td><td><span class="badge">New</span></td></tr>
+            <tr><td><input type="checkbox"></td><td>Mindray India (OEM)<div class="small muted">Mumbai · in SAP</div></td><td><span class="badge">OEM</span></td><td><span class="badge good">88%</span></td></tr>
+            <tr><td><input type="checkbox"></td><td>Precision Med Parts<div class="small muted">Hyderabad · not in SAP</div></td><td><span class="badge ai">IndiaMART</span></td><td><span class="badge">New</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="card-b" style="border-top:1px solid var(--line)">
+        <h3 style="margin-bottom:8px">RFQ to 3 vendors</h3>
+        <div class="field"><label>Message</label><textarea>Please quote for: O₂ sensor cell for Mindray SV300 (OEM 040-001829-00), qty 1, delivery to Kochi by 4 Oct. Include price, availability, delivery time, payment terms, warranty, freight, GST and validity.</textarea></div>
+        <div class="row mt-s"><span class="badge">Item image</span><span class="badge">Spec sheet</span><span class="badge">Delivery address</span></div>
+        <div class="row mt"><label class="check"><input type="checkbox" checked> Auto-capture replies into quotations</label><button class="btn primary" style="margin-left:auto" data-toast="RFQ-26-0877 sent to 3 vendors. Replies will be captured automatically.">Send RFQ</button></div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

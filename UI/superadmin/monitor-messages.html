@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Super Admin · Monitor & act</div>
+      <h1>Messages</h1>
+      <p class="sub">Employees don't message vendors by hand. The Cyrix bot sends every quotation request and follows up automatically. Watch the conversations here and step in when you need to.</p>
+    </div>
+    <div class="actions"><span class="badge ai">Cyrix Bot</span></div>
+  </div>
+
+  <div class="grid g4" id="kpis"></div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>Automation rules</h2>
+      <label class="row" style="margin-left:auto;gap:10px"><span class="small muted">Bot enabled</span><span class="sw"><input type="checkbox" id="botOn" checked><i></i></span></label></div>
+    <div class="card-b">
+      <div class="grid g4" id="policy"></div>
+      <p class="small faint" style="margin:12px 0 0">Follow-ups go out at 10:00 on weekdays, by email and WhatsApp. These rules apply to every team.</p>
+    </div>
+  </div>
+
+  <div class="row mt" style="margin-bottom:14px">
+    <select id="fTeam"><option value="">All teams</option></select>
+    <select id="fEmp"><option value="">All employees</option></select>
+    <select id="fStatus"><option value="">All status</option><option>Awaiting reply</option><option>Follow-up due</option><option>Replied</option><option>No reply — escalated</option><option>Paused</option></select>
+    <input id="q" placeholder="Search PI or vendor…" style="width:230px">
+  </div>
+
+  <div class="split-l">
+    <div class="card">
+      <div class="card-h"><h2>Conversations</h2><span class="tag small muted" id="count"></span></div>
+      <div class="list" id="list" data-paginate></div>
+    </div>
+    <div class="card" id="thread"></div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
+  var BOT = "Cyrix Bot", TODAY = new Date(); TODAY.setHours(0, 0, 0, 0);
+  var tone = { "Awaiting reply": "warn", "Follow-up due": "info", Replied: "good", "No reply — escalated": "bad", Paused: "" };
+  function dstr(n) { var d = new Date(TODAY); d.setDate(d.getDate() - n); return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }); }
+
+  // One conversation per PI that has moved past approval. The bot's follow-ups run on a 24 h / 48 h / 72 h cadence.
+  var convs = SA.allPIs().filter(function (p, i) { return p.state !== "Awaiting approval" && i % 3 === 0; }).map(function (p) {
+    var h = hash(p.id), v = SA.VENDORS[h % SA.VENDORS.length], mode = h % 10, ev = [], status, since, followups, rate = 500 + (h % 9500);
+    if (mode < 4) { // vendor replied
+      var replyDay = 1 + (h % 3); since = replyDay + 1 + (h % 4); followups = replyDay - 1; status = "Replied";
+    } else if (mode < 7) { // still waiting, bot has sent 0-2 follow-ups
+      since = h % 3; followups = since; status = since >= 1 && h % 2 ? "Follow-up due" : "Awaiting reply";
+    } else if (mode < 9) { // three follow-ups, no answer
+      since = 4 + (h % 3); followups = 3; status = "No reply — escalated";
+    } else { since = 1; followups = 0; status = "Paused"; }
+    ev.push({ who: BOT, day: since, at: "10:05", text: "Sent a quotation request to " + v + " for " + p.item + " × " + p.qty + " (email + WhatsApp).", cls: "done" });
+    for (var i = 1; i <= followups; i++) ev.push({ who: BOT, day: since - i, at: "10:00", text: "Automatic follow-up #" + i + ": reminded " + v + " that the quotation is still pending.", cls: "done" });
+    if (status === "Replied") {
+      ev.push({ who: v, day: since - followups - 1, at: "15:40", text: "Replied with a quotation.", cls: "done" });
+      ev.push({ who: BOT, day: since - followups - 1, at: "15:41", text: "Read the reply and recorded ₹" + rate.toLocaleString("en-IN") + " per unit (valid 30 days).", cls: "done" });
+    } else if (status === "No reply — escalated") {
+      ev.push({ who: BOT, day: 0, at: "10:00", text: "No reply after 3 follow-ups — flagged " + SA.emp(p.owner).name + " and Super Admin for a manual call.", cls: "now" });
+    } else if (status === "Paused") {
+      ev.push({ who: BOT, day: 0, at: "09:12", text: "Follow-ups paused by Super Admin.", cls: "now" });
+    } else {
+      ev.push({ who: BOT, day: 0, at: "—", text: followups < 3 ? "Next follow-up #" + (followups + 1) + " scheduled for tomorrow 10:00." : "Waiting for vendor.", cls: "now", future: true });
+    }
+    return { p: p, vendor: v, status: status, followups: followups, ev: ev, rate: rate, paused: status === "Paused" };
+  });
+
+  function kpis() {
+    var c = function (s) { return convs.filter(function (x) { return x.status === s; }).length; };
+    var sent = convs.reduce(function (a, x) { return a + 1 + x.followups; }, 0), rep = c("Replied");
+    var k = [["Messages sent by bot", sent, "requests + follow-ups", "smart_toy"], ["Awaiting reply", c("Awaiting reply") + c("Follow-up due"), c("Follow-up due") + " follow-ups due today", "hourglass_top"],
+      ["Reply rate", Math.round(rep / convs.length * 100) + "%", rep + " of " + convs.length + " threads", "mark_email_read"], ["Escalated", c("No reply — escalated"), "no reply after 3 follow-ups", "warning"]];
+    $("kpis").innerHTML = k.map(function (x) { return '<div class="card kpi"><div class="l">' + x[0] + '</div><span class="mi kpi-ic">' + x[3] + '</span><div class="v">' + x[1] + '</div><div class="d">' + x[2] + "</div></div>"; }).join("");
+  }
+  $("policy").innerHTML = [["Request", "Sent right after the PR is approved"], ["Follow-up #1", "24 h after, if no reply"], ["Follow-up #2", "48 h after, if no reply"], ["Follow-up #3 → escalate", "72 h after; then the PI owner is flagged"]].map(function (x) {
+    return '<div class="card" style="padding:14px 16px"><div class="small faint">' + x[0] + '</div><div style="margin-top:4px;font-weight:500">' + x[1] + "</div></div>";
+  }).join("");
+
+  $("fTeam").innerHTML += SA.TEAMS.map(function (t) { return '<option value="' + t.id + '">' + t.name + "</option>"; }).join("");
+  $("fEmp").innerHTML += SA.EMPLOYEES.filter(function (e) { return e.status === "active"; }).map(function (e) { return '<option value="' + e.id + '">' + e.name + "</option>"; }).join("");
+  var sel = null;
+
+  function render() {
+    kpis();
+    var q = $("q").value.toLowerCase(), ft = $("fTeam").value, fe = $("fEmp").value, fs = $("fStatus").value;
+    var list = convs.filter(function (c) { var e = SA.emp(c.p.owner); return (!ft || e.team === ft) && (!fe || c.p.owner === fe) && (!fs || c.status === fs) && (!q || (c.p.id + c.vendor).toLowerCase().indexOf(q) >= 0); });
+    $("count").textContent = list.length + " threads";
+    if (list.indexOf(sel) < 0) sel = list[0] || null;
+    $("list").innerHTML = list.map(function (c) {
+      var last = c.ev[c.ev.length - 1];
+      return '<a class="it' + (c === sel ? " on" : "") + '" data-i="' + convs.indexOf(c) + '"><div class="avatar" style="background:var(--ai-bg);color:var(--ai-fg)"><span class="mi" style="color:inherit;font-size:18px">smart_toy</span></div><div class="grow"><div class="t1">' + esc(c.vendor) + '</div><div class="t2">' + c.p.id + " · " + esc(last.text) + '</div></div><span class="badge ' + tone[c.status] + '">' + c.status + "</span></a>";
+    }).join("") || '<div class="card-b muted">No conversations match.</div>';
+    if (!sel) { $("thread").innerHTML = '<div class="card-b muted">Nothing to show.</div>'; return; }
+    var e = SA.emp(sel.p.owner), nx = sel.followups < 3 && sel.status !== "Replied" && !sel.paused;
+    $("thread").innerHTML = '<div class="card-h"><h2>' + esc(sel.vendor) + '</h2><span class="badge ' + tone[sel.status] + '">' + sel.status + "</span></div>" +
+      '<div class="card-b"><dl class="kv"><dt>PI</dt><dd class="mono">' + sel.p.id + "</dd><dt>Item</dt><dd>" + esc(sel.p.item) + " × " + sel.p.qty + "</dd><dt>PI owner</dt><dd>" + esc(e.name) + " · " + esc(SA.teamName(e.team)) +
+      "</dd><dt>Follow-ups sent</dt><dd>" + sel.followups + " of 3</dd></dl>" +
+      '<ul class="tl mt">' + sel.ev.map(function (m) { return "<li class='" + m.cls + "'><b>" + esc(m.who) + '</b> <span class="small faint">' + (m.future ? "scheduled" : dstr(m.day) + ", " + m.at) + "</span><div>" + esc(m.text) + "</div></li>"; }).join("") + "</ul>" +
+      '<div class="row mt">' +
+        (sel.status !== "Replied" ? '<button class="btn sm" data-a="now" type="button"' + (sel.paused || !$("botOn").checked ? " disabled" : "") + '><span class="mi">send</span>Send follow-up now</button>' : "") +
+        (sel.status !== "Replied" ? '<button class="btn sm" data-a="pause" type="button">' + (sel.paused ? '<span class="mi">play_arrow</span>Resume bot' : '<span class="mi">pause</span>Pause bot for this thread') + "</button>" : "") +
+        (sel.status === "No reply — escalated" ? '<button class="btn sm good" data-a="done" type="button">Mark handled</button>' : "") +
+      "</div>" +
+      '<div class="alert ai mt">Written and sent by the automation bot. Nobody on the team typed these messages.' + (nx ? " Next follow-up is queued automatically." : "") + "</div></div>";
+  }
+
+  $("thread").addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-a]"); if (!b || !sel) return;
+    var a = b.getAttribute("data-a");
+    if (a === "now") {
+      sel.followups = Math.min(3, sel.followups + 1);
+      sel.ev.splice(sel.ev.length - 1, 0, { who: BOT, day: 0, at: "now", text: "Follow-up #" + sel.followups + " sent immediately at the Super Admin's request.", cls: "done" });
+      if (sel.followups >= 3 && sel.status !== "No reply — escalated") sel.status = "Awaiting reply";
+      SA.log("action", sel.p.id, "Sent bot follow-up #" + sel.followups + " to " + sel.vendor); CX.toast("Follow-up sent to " + sel.vendor + " (demo)");
+    } else if (a === "pause") {
+      sel.paused = !sel.paused; sel.status = sel.paused ? "Paused" : "Awaiting reply";
+      SA.log("action", sel.p.id, (sel.paused ? "Paused" : "Resumed") + " bot follow-ups for " + sel.vendor); CX.toast(sel.paused ? "Bot paused for this thread (demo)" : "Bot resumed (demo)");
+    } else if (a === "done") {
+      sel.status = "Replied"; SA.log("action", sel.p.id, "Marked escalated thread handled: " + sel.vendor); CX.toast("Marked as handled (demo)");
+    }
+    render();
+  });
+  $("list").addEventListener("click", function (ev) { var a = ev.target.closest("[data-i]"); if (a) { sel = convs[+a.getAttribute("data-i")]; render(); } });
+  ["q", "fTeam", "fEmp", "fStatus"].forEach(function (id) { $(id).addEventListener("input", render); });
+  $("botOn").addEventListener("change", function () { CX.toast($("botOn").checked ? "Automation enabled (demo)" : "Automation paused for all threads (demo)"); render(); });
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purchase Request</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content" id="app"></main>
+
+<script src="../assets/cyrix-range.js"></script>
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script src="sa-monitor.js"></script>
+<script>
+  SAM.render({
+    dates: true, kind: "pr", title: "Purchase Request", sub: "Approved items that moved into sourcing. Watch every request, hand it to someone else, or cancel it.",
+    statuses: ["Sourcing", "Quotes in", "PO pending", "Closed", "Cancelled"], tone: { Sourcing: "warn", "Quotes in": "info", "PO pending": "info", Closed: "good", Cancelled: "bad" },
+    rank: function (r) { return r.status === "Closed" || r.status === "Cancelled" ? 0 : 1; },
+    cols: [
+      { label: "PR", fmt: function (r) { return '<span class="mono">' + r.id + "</span>"; } },
+      { label: "PI", fmt: function (r) { return '<span class="mono">' + r.pi + "</span>"; } },
+      { label: "Item", fmt: function (r) { return r.item; } },
+      { label: "Qty", num: true, fmt: function (r) { return r.qty; } },
+      { label: "Zone", fmt: function (r) { return r.zone; } },
+      { label: "Est. value", num: true, fmt: function (r, m) { return m(r.value); } },
+      { label: "Age", num: true, fmt: function (r) { return '<span style="' + (r.overdue && r.status !== "Closed" ? "color:var(--danger);font-weight:600" : "") + '">' + (r.age ? r.age + " d" : "today") + "</span>"; } }
+    ],
+    kpis: function (rows) {
+      var c = function (s) { return rows.filter(function (r) { return r.status === s; }).length; };
+      return [["Open requests", rows.length - c("Closed") - c("Cancelled"), "across all teams", "shopping_cart"], ["Sourcing", c("Sourcing"), "waiting for quotes", "search"], ["Quotes in", c("Quotes in"), "ready to compare", "request_quote"], ["PO pending", c("PO pending"), "awaiting sign-off", "receipt_long"]];
+    },
+    actions: function (r) {
+      if (r.status === "Closed" || r.status === "Cancelled") return [];
+      return [{ id: "reassign", label: "Reassign" }, { id: "cancel", label: "Cancel", cls: "danger", run: function (r) { r.status = "Cancelled"; return "Cancelled " + r.id + " (Super Admin override)"; } }];
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purchase Order</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Orders · Purchase order</div>
+      <h1>Placed purchase orders</h1>
+      <p class="sub">Purchase orders already placed with vendors, live from SAP.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabs" data-tabs="po">
+      <button class="on" data-tab="open" id="openTabBtn">Open</button>
+      <button data-tab="closed">Closed</button>
+    </div>
+    <div id="status" class="card-b muted">Loading…</div>
+
+    <!-- Open: one row per line item — qty and item description are
+         per-line, so a one-row-per-PO table can't show them without
+         picking just one item arbitrarily. -->
+    <div class="tab-panel on card-b" data-panel="po:open" id="openPanel">
+      <div class="table-wrap">
+        <table class="t">
+          <thead>
+            <tr>
+              <th>PO No.</th><th>PI number</th><th>Vendor</th><th>Item description</th><th>Date</th>
+              <th>Due date</th><th>Status</th><th>Payment status</th>
+              <th class="num">Quantity</th><th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody id="openRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Closed: one row per PO — it's done, so the summary is enough;
+         line-item detail is still one click away via the popup. -->
+    <div class="tab-panel card-b" data-panel="po:closed" id="closedPanel">
+      <div class="table-wrap">
+        <table class="t">
+          <thead>
+            <tr>
+              <th>PO No.</th><th>PI number</th><th>Vendor</th><th>Date</th><th>Due date</th>
+              <th>Status</th><th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody id="closedRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <p class="small faint mt">Stored snapshot of real purchase orders from SAP — the 30 most recent, not the full history. Payment status is a preview — SAP isn't tracking real advance/paid data against these POs yet.</p>
+
+  <!-- PO detail — vendor, comments and the full line-item breakdown. -->
+  <div class="modal-bg" id="detailModal">
+    <div class="modal" style="width:min(760px,100%)">
+      <div class="card-h"><h2 id="dmTitle">Purchase order</h2><button class="btn sm tag" data-close type="button">✕</button></div>
+      <div class="card-b" id="dmBody"></div>
+      <div class="card-f"><button class="btn" data-close type="button">Close</button></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="assets/mock-data.js"></script>
+<script>
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+    );
+  }
+
+  function inr(n) {
+    const num = Number(n);
+    return Number.isFinite(num) ? "₹" + num.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "—";
+  }
+
+  const statusEl = document.getElementById("status");
+  const openPanel = document.getElementById("openPanel");
+  const closedPanel = document.getElementById("closedPanel");
+  const openRowsEl = document.getElementById("openRows");
+  const closedRowsEl = document.getElementById("closedRows");
+
+  let allPOs = [];
+
+  // SAP's PurchaseOrders doesn't carry a real "has this been paid" signal
+  // for this company (DownPayment/DownPaymentAmount are 0 on every open
+  // PO here — payment tracking lives on AP Invoices, a separate document
+  // this page doesn't pull from yet). Simulated, seeded on the PO number
+  // so it's stable across reloads rather than reshuffling every render.
+  function seedFrom(str) {
+    let h = 0;
+    for (let i = 0; i < String(str).length; i++) h = (h * 31 + String(str).charCodeAt(i)) >>> 0;
+    return h;
+  }
+  const PAYMENT_STATES = [
+    { label: "Not yet", cls: "warn" },
+    { label: "Advance", cls: "info" },
+    { label: "Fully paid", cls: "good" },
+  ];
+  function paymentStatusFor(p) {
+    return PAYMENT_STATES[seedFrom(p.docNum) % PAYMENT_STATES.length];
+  }
+
+  // Open + due date already passed = overdue. Closed POs are done, so
+  // their due date isn't checked.
+  function daysOverdue(p) {
+    if (p.status !== "Open" || !p.dueDate) return 0;
+    const due = new Date(p.dueDate + "T00:00:00");
+    const today = new Date(new Date().toDateString());
+    if (Number.isNaN(due.getTime())) return 0;
+    return Math.round((today - due) / 86400000);
+  }
+
+  // SAP doesn't expose the originating Purchase Indent as its own field on
+  // PurchaseOrders — it's buried in free-text Comments ("Based On Purchase
+  // Request 100002."), so pull it out instead of leaving the person to
+  // read it out of a sentence.
+  function piNumberOf(p) {
+    const m = (p.comments || "").match(/Purchase Request (\d+)/i);
+    return m ? m[1] : "";
+  }
+
+  function renderOpen() {
+    const list = allPOs.filter((p) => p.status === "Open");
+    const overdueCount = list.filter((p) => daysOverdue(p) > 0).length;
+    document.getElementById("openTabBtn").textContent = overdueCount > 0 ? `Open (${overdueCount} overdue)` : "Open";
+    if (list.length === 0) {
+      openRowsEl.innerHTML = '<tr><td colspan="10" class="muted">No open purchase orders.</td></tr>';
+      return;
+    }
+    openRowsEl.innerHTML = list
+      .flatMap((p) => {
+        const pay = paymentStatusFor(p);
+        const overdue = daysOverdue(p);
+        const lines = p.lines && p.lines.length ? p.lines : [{ itemDesc: "—", qty: "—" }];
+        return lines.map(
+          (l) => `<tr data-po="${esc(p.docNum)}" style="cursor:pointer">
+            <td class="mono">${esc(p.docNum)}</td>
+            <td class="mono">${esc(piNumberOf(p) || "—")}</td>
+            <td>${esc(p.vendorName)}</td>
+            <td>${esc(l.itemDesc || "—")}</td>
+            <td>${esc(p.docDate)}</td>
+            <td class="${overdue > 0 ? "worst" : ""}">${esc(p.dueDate)}</td>
+            <td>
+              <span class="badge info">${esc(p.status)}</span>
+              ${overdue > 0 ? `<span class="badge bad" title="${overdue} day${overdue === 1 ? "" : "s"} past due date">Overdue · ${overdue}d</span>` : ""}
+            </td>
+            <td><span class="badge ${pay.cls}">${pay.label}</span></td>
+            <td class="num">${esc(l.qty ?? "—")}</td>
+            <td class="num">${inr(p.total)}</td>
+          </tr>`,
+        );
+      })
+      .join("");
+    openRowsEl.querySelectorAll("tr[data-po]").forEach((tr) => {
+      tr.addEventListener("click", () => {
+        const po = list.find((p) => String(p.docNum) === tr.getAttribute("data-po"));
+        if (po) openDetailModal(po);
+      });
+    });
+  }
+
+  function renderClosed() {
+    const list = allPOs.filter((p) => p.status === "Closed");
+    if (list.length === 0) {
+      closedRowsEl.innerHTML = '<tr><td colspan="7" class="muted">No closed purchase orders.</td></tr>';
+      return;
+    }
+    closedRowsEl.innerHTML = list
+      .map(
+        (p, idx) => `<tr data-row="${idx}" style="cursor:pointer">
+          <td class="mono">${esc(p.docNum)}</td>
+          <td class="mono">${esc(piNumberOf(p) || "—")}</td>
+          <td>${esc(p.vendorName)}</td>
+          <td>${esc(p.docDate)}</td>
+          <td>${esc(p.dueDate)}</td>
+          <td><span class="badge good">${esc(p.status)}</span></td>
+          <td class="num">${inr(p.total)}</td>
+        </tr>`,
+      )
+      .join("");
+    closedRowsEl.querySelectorAll("tr[data-row]").forEach((tr) => {
+      tr.addEventListener("click", () => openDetailModal(list[Number(tr.getAttribute("data-row"))]));
+    });
+  }
+
+  const detailModal = document.getElementById("detailModal");
+  function openDetailModal(p) {
+    document.getElementById("dmTitle").textContent = "PO " + p.docNum + " — " + p.vendorName;
+    const lineRows = (p.lines || [])
+      .map(
+        (l) => `<tr>
+          <td class="mono">${esc(l.itemCode || "—")}</td>
+          <td>${esc(l.itemDesc || "—")}</td>
+          <td class="num">${esc(l.qty ?? "—")}</td>
+          <td class="num">${inr(l.price)}</td>
+          <td class="num">${inr(l.lineTotal)}</td>
+        </tr>`,
+      )
+      .join("");
+    const pay = paymentStatusFor(p);
+    const overdue = daysOverdue(p);
+    const piNumber = piNumberOf(p);
+    document.getElementById("dmBody").innerHTML = `
+      <dl class="kv">
+        <dt>Vendor</dt><dd>${esc(p.vendorName)} <span class="mono muted">${esc(p.vendorCode)}</span></dd>
+        ${piNumber ? `<dt>PI number</dt><dd class="mono">${esc(piNumber)}</dd>` : ""}
+        <dt>Date</dt><dd>${esc(p.docDate)}</dd>
+        <dt>Due date</dt><dd>${esc(p.dueDate)}${overdue > 0 ? ` <span class="badge bad">Overdue · ${overdue}d</span>` : ""}</dd>
+        <dt>Status</dt><dd><span class="badge ${p.status === "Open" ? "info" : "good"}">${esc(p.status)}</span></dd>
+        ${p.status === "Open" ? `<dt>Payment status</dt><dd><span class="badge ${pay.cls}">${pay.label}</span></dd>` : ""}
+        <dt>Subtotal</dt><dd>${inr(p.subtotal)} <span class="muted small">sum of line items below, before tax</span></dd>
+        <dt>Tax</dt><dd>${inr(p.tax)}</dd>
+        ${p.otherCharges ? `<dt>Other charges</dt><dd>${inr(p.otherCharges)} <span class="muted small">freight/other, not tied to any line item</span></dd>` : ""}
+        <dt>Total</dt><dd style="font-weight:650">${inr(p.total)}</dd>
+        ${p.comments ? `<dt>Comments</dt><dd>${esc(p.comments)}</dd>` : ""}
+      </dl>
+      <div class="card-h" style="padding-left:0;margin-top:16px"><h2 style="font-size:14px">Line items</h2><span class="tag small muted">prices shown before tax</span></div>
+      <div class="table-wrap">
+        <table class="t">
+          <thead><tr><th>Item code</th><th>Description</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Line total</th></tr></thead>
+          <tbody>${lineRows || '<tr><td colspan="5" class="muted">No line items on file.</td></tr>'}</tbody>
+        </table>
+      </div>`;
+    detailModal.classList.add("show");
+  }
+
+  // Stored snapshot (assets/mock-data.js), not a live fetch — captured once
+  // from SAP's PurchaseOrders entity, same reason as Approval/Purchase: a
+  // live SAP query here would mean a slow per-row fetch instead of an
+  // instant render.
+  function load() {
+    allPOs = (window.CX_MOCK && window.CX_MOCK.purchaseOrders) || [];
+    if (allPOs.length === 0) {
+      statusEl.textContent = "No stored data found — assets/mock-data.js didn't load.";
+      statusEl.classList.add("bad");
+      statusEl.style.display = "block";
+      return;
+    }
+    statusEl.style.display = "none";
+    renderOpen();
+    renderClosed();
+  }
+  load();
+</script>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

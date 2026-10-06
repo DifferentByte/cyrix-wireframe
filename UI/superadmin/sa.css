@@ -1,0 +1,102 @@
+/* Super Admin wireframe extras — layered on ../assets/cyrix-ui.css */
+
+/* sidebar preview (dark mini nav) */
+.sa-prev{background:var(--side-bg);border-radius:14px;padding:10px 10px 12px;color:var(--side-ink)}
+.sa-prev .nav-group{margin-top:0}
+.sa-prev .nav-link{cursor:default}
+.sa-prev-empty{font-size:12.5px;color:var(--side-ink-faint);padding:14px 10px;text-align:center}
+
+/* top-bar role switcher */
+.topbar .sa-viewas{width:auto;height:34px;padding:0 34px 0 14px;font-size:12.5px;font-weight:500;border-radius:999px;background-color:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff;box-shadow:none}
+.topbar .sa-viewas option{color:#111}
+
+/* on/off switch */
+.sw{position:relative;display:inline-block;width:38px;height:22px;flex:none}
+.sw input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:pointer;z-index:1}
+.sw i{position:absolute;inset:0;border-radius:999px;background:var(--line-strong);transition:background .15s}
+.sw i::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.sw input:checked + i{background:var(--accent)}
+.sw input:checked + i::after{transform:translateX(16px)}
+.sw input:focus-visible + i{box-shadow:0 0 0 3px var(--accent-soft)}
+
+/* permission matrix */
+.pm td,.pm th{text-align:center}
+.pm td:first-child,.pm th:first-child{text-align:left}
+.pm .mod{display:flex;align-items:center;gap:12px;font-weight:500}
+.pm .mod .mi{color:var(--accent)}
+.pm tr.off td:not(:first-child){opacity:.35}
+.pm tr.off .mod{color:var(--ink-faint)}
+.pm .na{color:var(--ink-faint)}
+.pm td.chg{background:var(--warning-soft)}
+
+/* role cards */
+.role-card{display:flex;flex-direction:column;gap:12px;padding:20px;text-decoration:none;color:inherit;transition:box-shadow .2s,border-color .2s}
+.role-card:hover{border-color:var(--line-strong);box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.role-card .rc-ic{width:40px;height:40px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.role-card h3{margin:0;font-size:16px}
+.role-card p{margin:0;color:var(--ink-soft);font-size:13px}
+.role-card .chips{display:flex;flex-wrap:wrap;gap:6px}
+
+/* employee cell */
+.who{display:flex;align-items:center;gap:12px}
+.who .avatar{width:32px;height:32px;font-size:12px;flex:none}
+.who b{display:block;font-weight:500}
+.who small{color:var(--ink-faint)}
+
+/* zone pill toggles */
+.zones{display:flex;flex-wrap:wrap;gap:8px}
+.zones label{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer;background:var(--surface)}
+.zones label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.zones input{width:16px;height:16px}
+
+/* access overview grid */
+.am td,.am th{text-align:center}
+.am td:first-child,.am th:first-child{text-align:left}
+.am .yes{color:var(--good);font-size:20px}
+.am .no{color:var(--line-strong)}
+.am .cnt-a{font-size:11px;color:var(--ink-faint);display:block}
+
+.sa-note{display:flex;gap:10px;align-items:flex-start}
+
+.t a{text-decoration:none}
+.t a:hover{text-decoration:underline}
+#previewBtns{margin-top:12px}
+
+/* workload bars */
+.wbar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--surface-2);min-width:90px}
+.wbar i{display:block;height:100%}
+.wbar .ok{background:var(--good)}
+.wbar .pend{background:var(--warning)}
+.hb{display:grid;grid-template-columns:150px 1fr 44px;gap:12px;align-items:center;font-size:13px;padding:7px 0}
+.hb .track{height:10px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.hb .track i{display:block;height:100%;border-radius:999px;background:var(--warning)}
+.hb .track i.hot{background:var(--danger)}
+.hb .n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.hb a{text-decoration:none;color:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb a:hover{color:var(--accent)}
+.t th.sortable{cursor:pointer;user-select:none}
+.t th.sortable:hover{color:var(--ink)}
+.team-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.team-stats b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.team-stats span{font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em}
+
+.row > select,.row > input{width:auto}
+
+.mod{display:flex;align-items:center;gap:12px;font-weight:500}
+.mod .mi{color:var(--accent)}
+
+/* notification bell (top bar) */
+.sa-bellcount{position:absolute;top:3px;right:2px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#e53935;color:#fff;font-size:10.5px;font-weight:600;display:grid;place-items:center}
+.sa-notif{position:fixed;top:70px;right:24px;width:min(400px,calc(100vw - 24px));z-index:60;background:var(--surface);color:var(--ink);border:1px solid var(--line-strong);border-radius:14px;box-shadow:0 16px 40px rgba(0,0,0,.28);overflow:hidden}
+.sa-notif .nh{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);font-weight:600}
+.sa-notif .nl{max-height:380px;overflow:auto}
+.sa-notif a.ni{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);text-decoration:none;color:inherit}
+.sa-notif a.ni:hover{background:var(--surface-2)}
+.sa-notif .ni .ic{width:34px;height:34px;border-radius:50%;background:var(--warning-soft);color:var(--warning);display:grid;place-items:center;flex:none}
+.sa-notif .ni b{display:block;font-size:13px;font-weight:600}
+.sa-notif .ni span.s{font-size:12.5px;color:var(--ink-soft)}
+.sa-notif .ni span.m{display:block;font-size:11.5px;color:var(--ink-faint);margin-top:2px}
+.sa-notif .nf{display:block;padding:12px 16px;text-align:center;font-size:13px;font-weight:500;text-decoration:none}
+.sa-notif .ne{padding:28px 16px;text-align:center;color:var(--ink-faint);font-size:13px}
+
+.t .mono{white-space:nowrap}

@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purchase</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+<style>
+  /* Inline vendor accordion for the "Ask for Quotation" reply panel — not
+     in the shared stylesheet since it's specific to this one page's layout. */
+  .vendor-row{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:var(--surface)}
+  .vendor-row .vr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .vendor-row .vr-head>div:first-child{min-width:0;flex:1}
+  .vendor-row .vr-head button{flex:none}
+  .vendor-row .vr-name{font-weight:650}
+  .vendor-row .vr-meta{color:var(--ink-faint);font-size:12.5px;margin-top:2px}
+  .quote-panel{display:none;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+  .quote-panel.open{display:block}
+  .quote-panel table{width:100%}
+</style>
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Sourcing · Purchase</div>
+      <h1>Purchase requests</h1>
+      <p class="sub">Approved items that couldn't be fulfilled from stock and moved to a Purchase Request. Click one to source it from existing or new vendors.</p>
+    </div>
+    <div class="actions">
+      <div id="range"></div>
+      <select id="fState"><option value="">All states</option></select>
+      <button class="btn" id="refresh" type="button"><span class="mi">refresh</span>Refresh</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Purchase requests</h2></div>
+    <div id="status" class="card-b muted">Loading…</div>
+    <div class="table-wrap" id="tableWrap" style="display:none">
+      <table class="t">
+        <thead>
+          <tr>
+            <th>State</th>
+            <th>Item code</th>
+            <th>Description</th>
+            <th class="num">PR qty</th>
+            <th>Priority</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="small faint mt">Stored snapshot of real Cyrix/SAP data · attachment images proxy through <span id="apiBase"></span> when it's running</p>
+
+  <!-- Vendor sourcing modal -->
+  <div class="modal-bg" id="vendorModal">
+    <div class="modal" style="width:min(880px,100%)">
+      <div class="card-h">
+        <h2 id="vmTitle">Source vendors</h2>
+        <button class="btn sm tag" data-close type="button">✕</button>
+      </div>
+      <div class="card-b" style="padding-bottom:0">
+        <p class="sub" id="vmSub" style="margin-top:-4px"></p>
+        <div class="tabs" data-tabs="vm">
+          <button class="on" data-tab="existing">Existing vendor</button>
+          <button data-tab="new">New vendor from web</button>
+        </div>
+      </div>
+      <div class="tab-panel on card-b" data-panel="vm:existing" id="existingPanel">
+        <div class="muted" id="existingLoading">Loading purchase history from SAP…</div>
+        <div id="existingVendors" style="display:none"></div>
+      </div>
+      <div class="tab-panel card-b" data-panel="vm:new" id="newPanel">
+        <div class="alert info"><b>Not yet connected.</b> These are vendor leads found on the open web for this part — no live source is wired up yet, so this is a representative preview of how matches will appear once it is.</div>
+        <div id="newVendors" class="mt"></div>
+      </div>
+      <div class="card-f"><button class="btn" data-close type="button">Close</button></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="assets/mock-data.js"></script>
+<script src="assets/cyrix-range.js"></script>
+<script>
+  const API = new URLSearchParams(location.search).get("api") || "http://127.0.0.1:8000";
+  document.getElementById("apiBase").textContent = API;
+
+  const statusEl = document.getElementById("status");
+  const tableWrapEl = document.getElementById("tableWrap");
+  const rowsEl = document.getElementById("rows");
+  const fState = document.getElementById("fState");
+
+  let allRecords = [];
+  // Date filter (default: last 1 month) — reloads the table when changed.
+  const range = CXR.create(document.getElementById("range"), () => load());
+  let prRecords = [];
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+    );
+  }
+
+  function formatPrice(v) {
+    if (v.price === null || v.price === undefined || v.price === "") return null;
+    const num = Number(v.price);
+    const formatted = Number.isFinite(num)
+      ? num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : esc(v.price);
+    return v.currency ? `${formatted} ${esc(v.currency)}` : formatted;
+  }
+
+  function populateStateFilter() {
+    const states = [...new Set(prRecords.map((r) => r.state).filter(Boolean))].sort();
+    const current = fState.value;
+    fState.innerHTML =
+      '<option value="">All states</option>' +
+      states.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
+    fState.value = states.includes(current) ? current : "";
+  }
+
+  function renderRows() {
+    const selected = fState.value;
+    const records = selected ? prRecords.filter((r) => r.state === selected) : prRecords;
+    if (records.length === 0) {
+      rowsEl.innerHTML = "";
+      statusEl.textContent = selected
+        ? `No purchase requests for ${selected} right now — everything approved is covered by stock.`
+        : "No purchase requests right now — everything approved is covered by stock.";
+      statusEl.style.display = "block";
+      tableWrapEl.style.display = "none";
+      return;
+    }
+    rowsEl.innerHTML = records
+      .map((r, idx) => `<tr data-row="${idx}">
+          <td>${esc(r.state)}</td>
+          <td class="mono">${esc(r.item_code)}</td>
+          <td>${esc(r.item_desc || "")}</td>
+          <td class="num">${esc(r.pr_qty)}</td>
+          <td>${esc(r.priority || "Regular")}</td>
+          <td><button class="btn sm primary" type="button" data-source-idx="${idx}">Source vendors</button></td>
+        </tr>`)
+      .join("");
+
+    rowsEl.querySelectorAll("[data-source-idx]").forEach((btn) => {
+      btn.addEventListener("click", () => openVendorModal(records[Number(btn.getAttribute("data-source-idx"))]));
+    });
+
+    statusEl.style.display = "none";
+    tableWrapEl.style.display = "block";
+  }
+
+  // Stored snapshot (assets/mock-data.js), not a live fetch — same reason
+  // as Approval: the real stock check takes ~30-40s, so this renders
+  // instantly from a captured snapshot instead.
+  function load() {
+    const raw = (window.CX_MOCK && window.CX_MOCK.approved) || [];
+    allRecords = raw.filter((r) => range.contains(r.created_date));
+    // "only approved PI moved to PR" — out-of-stock items with a real
+    // PR quantity, excluding ones stuck on a failed stock check (neither
+    // confirmed ITR nor PR yet).
+    prRecords = allRecords.filter((r) => !r.stock_check_failed && Number(r.pr_qty) > 0);
+    if (raw.length === 0) {
+      statusEl.textContent = "No stored data found — assets/mock-data.js didn't load.";
+      statusEl.classList.add("bad");
+      statusEl.style.display = "block";
+      tableWrapEl.style.display = "none";
+      return;
+    }
+    populateStateFilter();
+    renderRows();
+    maybeOpenFromQuery();
+  }
+  fState.addEventListener("change", renderRows);
+  document.getElementById("refresh").addEventListener("click", load);
+
+  // Coming from Approval's "approve and create PR" button for a specific
+  // item — open its vendor modal straight away instead of making the
+  // person find the row again.
+  function maybeOpenFromQuery() {
+    const params = new URLSearchParams(location.search);
+    const code = params.get("item_code");
+    if (!code) return;
+    const match = prRecords.find((r) => r.item_code === code);
+    if (match) openVendorModal(match);
+  }
+
+  // ---------- Vendor sourcing modal ----------
+  const vendorModal = document.getElementById("vendorModal");
+  const existingVendorsEl = document.getElementById("existingVendors");
+  const existingLoadingEl = document.getElementById("existingLoading");
+  const newVendorsEl = document.getElementById("newVendors");
+
+  // Deterministic mock quotation data, seeded from the vendor's name and
+  // (where known) their real last-purchase price, so re-opening the same
+  // vendor shows the same numbers instead of re-randomising every click.
+  function seedFrom(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h;
+  }
+  function mockQuoteFor(vendorName, basePrice) {
+    const seed = seedFrom(vendorName);
+    const replied = seed % 3 !== 0; // ~2/3 of vendors have replied
+    const base = basePrice && Number.isFinite(Number(basePrice)) ? Number(basePrice) : 1000 + (seed % 9000);
+    const delta = ((seed % 21) - 10) / 100; // -10%..+10%
+    const rate = Math.round(base * (1 + delta));
+    const validity = 15 + (seed % 4) * 15; // 15/30/45/60 days
+    return { replied, rate, validity };
+  }
+
+  // PO Approval Matrix — who needs to sign off, based on the PO's total
+  // value (quoted rate × PR quantity). Configurable in the real system;
+  // these are the current thresholds.
+  function approvalFor(poValue) {
+    if (poValue <= 200000) return { chain: "Purchase Manager", cls: "good" };
+    if (poValue <= 1000000) return { chain: "Purchase Manager + VP", cls: "warn" };
+    return { chain: "Purchase Manager + VP + Director", cls: "bad" };
+  }
+
+  function renderQuotePanel(vendorName, basePrice) {
+    const q = mockQuoteFor(vendorName, basePrice);
+    if (!q.replied) {
+      return `<div class="alert warn mt">Quotation requested from <b>${esc(vendorName)}</b> — awaiting their reply.</div>`;
+    }
+    const qty = currentRecordQty || 1;
+    const poValue = q.rate * qty;
+    const approval = approvalFor(poValue);
+    return `<div class="mt">
+      <table class="t">
+        <thead><tr><th>Vendor</th><th class="num">Quoted rate (editable)</th><th>Validity</th><th></th></tr></thead>
+        <tbody>
+          <tr>
+            <td>${esc(vendorName)}</td>
+            <td class="num"><input type="number" class="price-edit" min="0" step="0.01" value="${q.rate}" style="width:120px;text-align:right;display:inline-block" title="Edit the price before creating the PO"></td>
+            <td>${q.validity} days</td>
+            <td><button class="btn sm good" type="button" disabled>Select &amp; create PO</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="row between small mt" style="align-items:center">
+        <span class="muted po-value-line">PO value: ₹${poValue.toLocaleString("en-IN")} (qty ${qty} × ₹${q.rate.toLocaleString("en-IN")})</span>
+        <span class="badge ${approval.cls} po-approval-badge">Needs approval: ${approval.chain}</span>
+      </div>
+    </div>`;
+  }
+
+  // Lets the person correct a vendor's quoted rate before sourcing — the
+  // PO value and approval-matrix badge recompute live as they type.
+  function wireQuotePanel(panel, qty) {
+    const input = panel.querySelector(".price-edit");
+    if (!input) return;
+    input.addEventListener("input", () => {
+      const rate = Number(input.value) || 0;
+      const poValue = rate * qty;
+      const approval = approvalFor(poValue);
+      const line = panel.querySelector(".po-value-line");
+      const badge = panel.querySelector(".po-approval-badge");
+      if (line) line.textContent = `PO value: ₹${poValue.toLocaleString("en-IN")} (qty ${qty} × ₹${rate.toLocaleString("en-IN")})`;
+      if (badge) {
+        badge.textContent = `Needs approval: ${approval.chain}`;
+        badge.className = `badge ${approval.cls} po-approval-badge`;
+      }
+    });
+  }
+
+  function wireVendorRow(container) {
+    container.querySelectorAll("[data-ask-quote]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const panel = btn.closest(".vendor-row").querySelector(".quote-panel");
+        const alreadyOpen = panel.classList.contains("open");
+        panel.classList.toggle("open", !alreadyOpen);
+        if (!alreadyOpen && !panel.dataset.filled) {
+          panel.innerHTML = renderQuotePanel(btn.getAttribute("data-vendor"), btn.getAttribute("data-price"));
+          wireQuotePanel(panel, currentRecordQty || 1);
+          panel.dataset.filled = "1";
+        }
+        btn.textContent = panel.classList.contains("open") ? "Hide quotations" : "Ask for Quotation / Rate of contract";
+      });
+    });
+  }
+
+  function loadExistingVendors(itemCode) {
+    existingLoadingEl.style.display = "block";
+    existingVendorsEl.style.display = "none";
+    const records = (window.CX_MOCK && window.CX_MOCK.vendorHistory && window.CX_MOCK.vendorHistory[itemCode]) || [];
+    if (records.length === 0) {
+      existingLoadingEl.textContent = "No prior vendor found in SAP for this item — try New vendor from web.";
+      return;
+    }
+    // One row per vendor (SAP returns one row per past PO line) — keep
+    // the most recent order per vendor for the sourcing view.
+    const byVendor = new Map();
+    for (const v of records) {
+      const key = v.vendor_code || v.vendor_name;
+      if (!byVendor.has(key) || (v.doc_date || "") > (byVendor.get(key).doc_date || "")) byVendor.set(key, v);
+    }
+    existingVendorsEl.innerHTML = [...byVendor.values()]
+      .map((v) => {
+        const priceLabel = formatPrice(v);
+        return `<div class="vendor-row">
+          <div class="vr-head">
+            <div>
+              <div class="vr-name">${esc(v.vendor_name)} <span class="mono muted" style="font-weight:400;font-size:12px">${esc(v.vendor_code)}</span></div>
+              <div class="vr-meta">
+                ${v.phone ? "📞 " + esc(v.phone) + "  " : ""}${v.email ? "· " + esc(v.email) + "  " : ""}
+                · Last order ${esc(v.doc_date)} · qty ${esc(v.quantity)}${priceLabel ? " @ " + priceLabel + "/unit" : ""}
+              </div>
+            </div>
+            <button class="btn sm" type="button" data-ask-quote data-vendor="${esc(v.vendor_name)}" data-price="${esc(v.price ?? "")}">Ask for Quotation / Rate of contract</button>
+          </div>
+          <div class="quote-panel"></div>
+        </div>`;
+      })
+      .join("");
+    wireVendorRow(existingVendorsEl);
+    existingLoadingEl.style.display = "none";
+    existingVendorsEl.style.display = "block";
+  }
+
+  // No real "search the web for a new vendor" source exists yet — shown
+  // clearly as a preview (see the banner above) rather than passed off as
+  // live data, same honesty the rest of this prototype uses for mocks.
+  const NEW_VENDOR_LEADS = [
+    { name: "Vitalcare Biomedical Supplies", location: "Chennai, TN", source: "IndiaMART" },
+    { name: "MedSource Equipment Traders", location: "Hyderabad, TG", source: "TradeIndia" },
+  ];
+  function renderNewVendors() {
+    newVendorsEl.innerHTML = NEW_VENDOR_LEADS
+      .map(
+        (v) => `<div class="vendor-row">
+          <div class="vr-head">
+            <div>
+              <div class="vr-name">${esc(v.name)}</div>
+              <div class="vr-meta">${esc(v.location)} · found via ${esc(v.source)} · not yet in SAP</div>
+            </div>
+            <button class="btn sm" type="button" data-ask-quote data-vendor="${esc(v.name)}" data-price="">Ask for Quotation / Rate of contract</button>
+          </div>
+          <div class="quote-panel"></div>
+        </div>`,
+      )
+      .join("");
+    wireVendorRow(newVendorsEl);
+  }
+
+  let currentRecordQty = 1;
+  function openVendorModal(record) {
+    currentRecordQty = Number(record.pr_qty) || 1;
+    document.getElementById("vmTitle").textContent = "Source vendors — " + record.item_code;
+    document.getElementById("vmSub").textContent =
+      `${record.item_desc || ""} · ${record.state} · PR qty ${record.pr_qty}`;
+    renderNewVendors();
+    loadExistingVendors(record.item_code);
+    vendorModal.classList.add("show");
+  }
+
+  load();
+</script>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

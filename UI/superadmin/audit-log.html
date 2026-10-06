@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit log</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Super Admin · Access control</div>
+      <h1>Audit log</h1>
+      <p class="sub">A permanent record of who changed access, and what changed.</p>
+    </div>
+    <div class="actions"><button class="btn" data-toast="Exported audit-log.csv (demo)" type="button"><span class="mi">download</span>Export CSV</button></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <h2>Changes</h2>
+      <div class="row" style="margin-left:auto">
+        <input id="q" placeholder="Search target or change…" style="width:230px">
+        <select id="fType"><option value="">All changes</option><option value="role">Roles only</option><option value="employee">Employees only</option><option value="admin">Admin accounts</option><option value="action">Admin actions</option></select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th>When</th><th>Changed by</th><th>Type</th><th>Target</th><th>Change</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  function render() {
+    var q = $("q").value.toLowerCase(), t = $("fType").value;
+    $("rows").innerHTML = SA.AUDIT.filter(function (a) {
+      return (!t || a.type === t) && (!q || (a.target + a.change).toLowerCase().indexOf(q) >= 0);
+    }).map(function (a) {
+      return '<tr><td class="nowrap">' + a.when + "</td><td>" + a.who + '</td><td><span class="badge ' + (a.type === "role" ? "info" : "") + '">' + a.type + "</span></td><td><b>" + a.target + "</b></td><td>" + a.change + "</td></tr>";
+    }).join("") || '<tr><td colspan="5" class="muted" style="padding:24px 20px">Nothing matches.</td></tr>';
+  }
+  ["q", "fType"].forEach(function (id) { $(id).addEventListener("input", render); });
+  render();
+</script>
+</body>
+</html>

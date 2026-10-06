@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Employee workload</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb"><a href="teams.html">Teams</a> · <a id="teamLink" href="#"></a> · <span id="crumb"></span></div>
+      <h1 id="title"></h1>
+      <p class="sub" id="sub"></p>
+    </div>
+    <div class="actions">
+      <a class="btn" id="editLink" href="#"><span class="mi">edit</span>Edit employee</a>
+    </div>
+  </div>
+
+  <div class="grid g4" id="kpis"></div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>Pending PIs</h2><span class="badge warn" id="pCount"></span></div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th>PI</th><th>Item</th><th class="num">Qty</th><th>Zone</th><th>Stage</th><th class="num">Waiting</th><th></th></tr></thead>
+        <tbody id="pending"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>Approved PIs</h2><span class="badge good" id="aCount"></span></div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th>PI</th><th>Item</th><th class="num">Qty</th><th>Zone</th><th class="num">Approved</th></tr></thead>
+        <tbody id="done"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="reassign">
+    <div class="modal" style="width:min(460px,100%)">
+      <div class="card-h"><h2>Reassign PI</h2><button class="btn sm tag" data-close type="button">✕</button></div>
+      <div class="card-b">
+        <p class="small muted" style="margin-top:0" id="rsPi"></p>
+        <div class="field"><label>Move to</label><select id="rsTo"></select>
+          <div class="hint">Teammates listed first; anyone else can be picked from the full list.</div></div>
+      </div>
+      <div class="card-f"><button class="btn" data-close type="button">Cancel</button>
+        <button class="btn primary" id="rsGo" type="button">Reassign</button></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var emp = SA.emp(SA.param("id")) || SA.emp("e2"), team = SA.team(emp.team), rsPi = null;
+  $("teamLink").textContent = team.name; $("teamLink").href = "team-detail.html?team=" + team.id;
+  $("crumb").textContent = emp.name; $("title").textContent = emp.name;
+  $("sub").textContent = SA.role(emp.role).name + " · " + SA.zoneText(emp.zones) + " · " + team.name + " team";
+  $("editLink").href = "employee-edit.html?id=" + emp.id;
+  var dayTxt = function (n) { return n ? n + " d" : "today"; };
+
+  function draw() {
+    var w = SA.work(emp.id), rate = w.assigned ? Math.round(w.approved / w.assigned * 100) : 0;
+    var kp = [["Assigned", w.assigned, "PIs routed to " + emp.name.split(" ")[0], "assignment"], ["Approved", w.approved, rate + "% approval rate", "task_alt"],
+      ["Pending", w.pending, w.overdue + " overdue (>3 days)", "pending_actions"], ["Avg turnaround", w.tat ? w.tat + " h" : "—", "assign → approve", "schedule"]];
+    $("kpis").innerHTML = kp.map(function (k, i) {
+      return '<div class="card kpi"><div class="l">' + k[0] + '</div><span class="mi kpi-ic">' + k[3] + '</span><div class="v"' + (i === 2 && w.overdue ? ' style="color:var(--danger)"' : "") + ">" + k[1] + '</div><div class="d">' + k[2] + "</div></div>";
+    }).join("");
+    $("pCount").textContent = w.pending + " pending"; $("aCount").textContent = w.approved + " approved";
+    $("pending").innerHTML = w.pis.slice().sort(function (a, b) { return b.age - a.age; }).map(function (p) {
+      return '<tr><td class="mono">' + p.id + "</td><td>" + p.item + '</td><td class="num">' + p.qty + "</td><td>" + p.zone + '</td><td><span class="badge ' + (p.overdue ? "bad" : "warn") + '">' + p.state + '</span></td><td class="num" style="' + (p.overdue ? "color:var(--danger);font-weight:600" : "") + '">' + dayTxt(p.age) + '</td>' +
+        '<td><button class="btn sm" data-pi="' + p.id + '" type="button">Reassign</button></td></tr>';
+    }).join("") || '<tr><td colspan="7" class="muted" style="padding:24px 20px">Nothing pending — all clear.</td></tr>';
+    $("done").innerHTML = w.done.map(function (p) {
+      return '<tr><td class="mono">' + p.id + "</td><td>" + p.item + '</td><td class="num">' + p.qty + "</td><td>" + p.zone + '</td><td class="num">' + dayTxt(p.age) + " ago</td></tr>";
+    }).join("") || '<tr><td colspan="5" class="muted" style="padding:24px 20px">No approved PIs yet.</td></tr>';
+  }
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-pi]"); if (!b) return;
+    rsPi = b.getAttribute("data-pi"); $("rsPi").textContent = "PI " + rsPi;
+    var mates = SA.EMPLOYEES.filter(function (x) { return x.id !== emp.id && x.status === "active"; });
+    mates.sort(function (a, c) { return (c.team === emp.team) - (a.team === emp.team); });
+    $("rsTo").innerHTML = mates.map(function (x) { return '<option value="' + x.id + '">' + x.name + " — " + SA.teamName(x.team) + " (" + SA.work(x.id).pending + " pending)</option>"; }).join("");
+    $("reassign").classList.add("show");
+  });
+  $("rsGo").addEventListener("click", function () {
+    SA.reassign(rsPi, $("rsTo").value); $("reassign").classList.remove("show");
+    CX.toast("PI moved to " + SA.emp($("rsTo").value).name + " (demo — resets on reload)"); draw();
+  });
+  draw();
+</script>
+</body>
+</html>

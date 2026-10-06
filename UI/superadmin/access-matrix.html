@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Access overview</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Super Admin · Access control</div>
+      <h1>Access overview</h1>
+      <p class="sub">Every role against every module, for a quick audit. Click a role to edit it.</p>
+    </div>
+    <div class="actions"><button class="btn" data-toast="Exported access-matrix.csv (demo)" type="button"><span class="mi">download</span>Export CSV</button></div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table class="t am">
+        <thead id="head"></thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+    <div class="card-b small muted"><span class="mi am yes" style="font-size:16px;vertical-align:middle">check_circle</span> module visible · the small number is how many actions are allowed inside it.</div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  document.getElementById("head").innerHTML = "<tr><th>Role</th>" + SA.MODS.map(function (m) { return "<th>" + m.label + "</th>"; }).join("") + "<th>Zones</th><th>Employees</th></tr>";
+  document.getElementById("body").innerHTML = SA.ROLES.map(function (r) {
+    var n = SA.EMPLOYEES.filter(function (e) { return e.role === r.id; }).length;
+    return '<tr><td><a href="role-edit.html?role=' + r.id + '"><b>' + r.name + "</b></a></td>" + SA.MODS.map(function (m) {
+      var p = r.perms[m.id];
+      return p ? '<td><span class="mi yes">check_circle</span><span class="cnt-a">' + p.length + " of " + m.acts.length + " actions</span></td>"
+               : '<td><span class="mi no">remove</span></td>';
+    }).join("") + '<td class="small">' + SA.zoneText(r.zones) + "</td><td>" + n + "</td></tr>";
+  }).join("");
+</script>
+</body>
+</html>

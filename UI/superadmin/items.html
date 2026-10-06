@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Items</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Super Admin · Catalog</div>
+      <h1>Items</h1>
+      <p class="sub">Every item created in SAP through Item Creation. You and any admin with the “Create items” power can add new items when a spare has no item code yet.</p>
+    </div>
+    <div class="actions">
+      <div id="range"></div>
+      <a class="btn primary" href="item-create.html"><span class="mi">add_box</span>Create item</a>
+    </div>
+  </div>
+
+  <div class="grid g4" id="kpis"></div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>Item master</h2>
+      <div class="row" style="margin-left:auto">
+        <input id="q" placeholder="Search code, description or PI…" style="width:230px">
+        <select id="fGroup"><option value="">All groups</option></select>
+        <select id="fState"><option value="">All states</option></select>
+        <select id="fBy"><option value="">Created by anyone</option><option value="employee">Employees</option><option value="admin">Admins</option><option value="super">Super Admin</option></select>
+        <select id="fStatus"><option value="">All status</option><option>Created in SAP</option><option>Syncing</option><option>Failed</option></select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th>Item code</th><th>Description</th><th>Group</th><th>UoM</th><th>HSN</th><th>State</th><th>Reference PI</th><th>Created by</th><th>Date</th><th>Status</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="card-b small muted" id="count"></div>
+  </div>
+
+</main>
+
+<script src="../assets/cyrix-range.js"></script>
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var tone = { "Created in SAP": "good", Syncing: "warn", Failed: "bad" }, kindBadge = { employee: "", admin: "warn", super: "info" }, kindText = { employee: "employee", admin: "admin", super: "Super Admin" };
+  var fmt = function (d) { return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); };
+
+  $("fGroup").innerHTML += SA.ITEM_GROUPS.map(function (g) { return "<option>" + g + "</option>"; }).join("");
+  $("fState").innerHTML += SA.ITEM_STATES.map(function (g) { return "<option>" + g + "</option>"; }).join("");
+  var range = CXR.create($("range"), function () { draw(); }, "3m");   // items are rarer than PIs, so default to 3 months
+
+  function draw() {
+    var q = $("q").value.toLowerCase(), g = $("fGroup").value, st = $("fState").value, by = $("fBy").value, ss = $("fStatus").value;
+    var dated = SA.ITEM_MASTER.filter(function (i) { return range.contains(i.date); });
+    var list = dated.filter(function (i) { return (!g || i.group === g) && (!st || i.state === st) && (!by || i.kind === by) && (!ss || i.status === ss) && (!q || (i.code + i.desc + i.ref).toLowerCase().indexOf(q) >= 0); });
+    var c = function (f) { return dated.filter(f).length; };
+    var k = [["Items created", dated.length, range.label(), "add_box"], ["Created by admins", c(function (i) { return i.kind === "admin" || i.kind === "super"; }), "admins + Super Admin", "admin_panel_settings"],
+      ["Syncing to SAP", c(function (i) { return i.status === "Syncing"; }), "code not confirmed yet", "sync"], ["Failed", c(function (i) { return i.status === "Failed"; }), "needs a retry", "error"]];
+    $("kpis").innerHTML = k.map(function (x) { return '<div class="card kpi"><div class="l">' + x[0] + '</div><span class="mi kpi-ic">' + x[3] + '</span><div class="v">' + x[1] + '</div><div class="d">' + x[2] + "</div></div>"; }).join("");
+    $("rows").innerHTML = list.map(function (i) {
+      return '<tr><td class="mono"><b>' + i.code + "</b></td><td style=\"min-width:280px\">" + esc(i.desc) + "</td><td class=\"nowrap\">" + i.group + "</td><td>" + i.uom + '</td><td class="mono nowrap">' + i.hsn + '</td><td><span class="badge">' + i.state + "</span></td>" +
+        '<td class="mono">' + (i.ref || '<span class="faint">—</span>') + "</td><td>" + esc(i.by) + ' <span class="badge ' + kindBadge[i.kind] + '">' + kindText[i.kind] + "</span></td>" +
+        '<td class="nowrap">' + fmt(i.date) + '</td><td><span class="badge ' + tone[i.status] + '">' + i.status + "</span></td>" +
+        "<td>" + (i.status === "Failed" ? '<button class="btn sm" data-toast="Retry sent to SAP for ' + i.code + ' (demo)" type="button">Retry</button>' : "") + "</td></tr>";
+    }).join("") || '<tr><td colspan="11" class="muted" style="padding:24px 20px">No items match.</td></tr>';
+    $("count").textContent = list.length + " matching · " + SA.ITEM_MASTER.length + " items in total";
+  }
+  ["q", "fGroup", "fState", "fBy", "fStatus"].forEach(function (id) { $(id).addEventListener("input", draw); });
+  draw();
+</script>
+</body>
+</html>

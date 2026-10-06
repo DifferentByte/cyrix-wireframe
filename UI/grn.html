@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GRN & Invoice OCR</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Receiving · Handbook §16, §18</div>
+      <h1>Goods receipt (GRN) · PO-26-3298</h1>
+      <p class="sub">Warehouse team: check the material, photograph the invoice, review the OCR fields, and post the GRN. The Service Coordinator is notified so ITR can follow.</p>
+    </div>
+    <div class="actions">
+      <select style="width:auto"><option>Kochi warehouse</option><option>Chennai warehouse</option><option>Bhubaneswar warehouse</option></select>
+    </div>
+  </div>
+
+  <div class="card"><div class="card-b">
+    <div class="flow"><span class="s done">Material received</span><span class="a">→</span><span class="s done">Warehouse verification</span><span class="a">→</span><span class="s now">Invoice capture</span><span class="a">→</span><span class="s">GRN</span><span class="a">→</span><span class="s">System update</span></div>
+  </div></div>
+
+  <div class="grid g2 mt">
+    <div class="card">
+      <div class="card-h"><h2>Invoice scan</h2><span class="badge ai tag">OCR · 97% confidence</span></div>
+      <div class="card-b">
+        <div class="img" data-part="doc" style="aspect-ratio:3/4;max-height:420px;margin:0 auto"><span class="cap">KMT/INV/2627/0881.jpg</span></div>
+        <div class="row mt"><button class="btn" data-toast="Camera opened">Retake photo</button><button class="btn" data-toast="Choose a file">Upload PDF</button></div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Extracted fields</h2><span class="tag small muted">Edit any field before posting</span></div>
+        <div class="card-b form">
+          <div class="field"><label>Invoice no.</label><input class="mono" value="KMT/INV/2627/0881"></div>
+          <div class="field"><label>Invoice date</label><input type="date" value="2026-09-24"></div>
+          <div class="field"><label>Vendor</label><input value="Kovai Medical Tech"></div>
+          <div class="field"><label>PO no. (on invoice)</label><input class="mono" value="PO-26-3298"></div>
+          <div class="field"><label>Taxable amount</label><input value="₹1,05,357"></div>
+          <div class="field"><label>GST (12%)</label><input value="₹12,643"></div>
+          <div class="field"><label>Invoice total</label><input value="₹1,18,000"></div>
+          <div class="field"><label>E-way bill</label><input class="mono" value="3210 4478 1102"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>Match: PO ↔ invoice ↔ received</h3></div>
+        <div class="table-wrap"><table class="t">
+          <thead><tr><th>Item</th><th class="num">PO qty</th><th class="num">Invoiced</th><th class="num">Received</th><th class="num">Accepted</th><th>Warranty</th></tr></thead>
+          <tbody>
+            <tr><td><span class="mono">SP-ECG-00415</span> ECG lead set 5-wire</td><td class="num">15</td><td class="num">15</td><td class="num"><input type="number" value="15" style="width:64px;text-align:right"></td><td class="num"><input type="number" value="14" style="width:64px;text-align:right"></td><td><input value="12 months" style="width:110px"></td></tr>
+          </tbody>
+        </table></div>
+        <div class="card-b stack">
+          <ul class="checks">
+            <li class="ok"><span class="ic">✓</span>Vendor & PO number match</li>
+            <li class="ok"><span class="ic">✓</span>Rate & GST match the PO</li>
+            <li class="warn"><span class="ic">!</span>1 unit rejected (damaged connector)<span class="r">Raise a debit note / replacement</span></li>
+          </ul>
+          <div class="field"><label>Warranty start (for §18 register)</label><input type="date" value="2026-09-30"></div>
+        </div>
+        <div class="card-f">
+          <button class="btn" data-toast="Rejection note sent to vendor and Purchase">Report discrepancy</button>
+          <button class="btn primary" data-toast="GRN-KOC-26-1022 posted to SAP. Service Coordinator notified for ITR.">Post GRN</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

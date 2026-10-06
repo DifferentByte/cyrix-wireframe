@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Role permissions</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb"><a href="roles.html">Roles</a> · <span id="crumb"></span></div>
+      <h1 id="title">Role permissions</h1>
+      <p class="sub">Switch a module on to show it in the sidebar, then tick what the role may do inside it. A dash means the action doesn't exist for that module.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="reset" type="button">Reset</button>
+      <button class="btn" data-toast="Role duplicated (demo)" type="button"><span class="mi">content_copy</span>Duplicate</button>
+      <button class="btn primary" id="save" type="button"><span class="mi">save</span>Save changes</button>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Role</h2><span class="badge" id="empBadge"></span></div>
+        <div class="card-b">
+          <div class="form">
+            <div class="field"><label>Role name</label><input id="rname"></div>
+            <div class="field"><label>Description</label><input id="rdesc"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Module permissions</h2><span class="badge" id="chgBadge">No changes</span></div>
+        <div class="table-wrap">
+          <table class="t pm">
+            <thead id="head"></thead>
+            <tbody id="body"></tbody>
+          </table>
+        </div>
+        <div class="card-b small muted">Highlighted cells are changes you haven't saved. “View” is required for every other action, so switching a module on turns it on automatically.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Data scope</h2></div>
+        <div class="card-b">
+          <div class="seg" id="scope"><button data-val="all">All zones</button><button data-val="some">Selected zones only</button></div>
+          <div class="zones mt-s" id="zones"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Sidebar preview</h2></div>
+        <div class="card-b">
+          <p class="small muted" style="margin-top:0">Exactly what employees with this role see.</p>
+          <div id="prev"></div>
+          <div class="row mt-s"><a class="btn sm" id="viewAs" href="role-view.html"><span class="mi">visibility</span>Open full preview</a></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>Employees with this role</h2></div>
+        <div class="list" id="emps"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var isNew = !!SA.param("new");
+  var role = SA.role(SA.param("role")) || SA.ROLES[0];
+  function clone(p) { var o = {}; Object.keys(p).forEach(function (k) { o[k] = p[k].slice(); }); return o; }
+  var orig = isNew ? {} : clone(role.perms), perms = clone(orig);
+  var origZones = isNew ? "all" : role.zones, zones = origZones === "all" ? "all" : origZones.slice();
+
+  $("head").innerHTML = "<tr><th>Module</th><th>Access</th>" + SA.ACTS.map(function (a) { return "<th>" + a.label + "</th>"; }).join("") + "</tr>";
+  $("zones").innerHTML = SA.ZONES.map(function (z) { return '<label><input type="checkbox" value="' + z + '"> ' + z + "</label>"; }).join("");
+
+  function has(src, m, a) { return (src[m] || []).indexOf(a) >= 0; }
+
+  function draw() {
+    var changes = 0;
+    $("body").innerHTML = SA.MODS.map(function (m) {
+      var on = !!perms[m.id], wasOn = !!orig[m.id], tr = "<tr" + (on ? "" : ' class="off"') + ">";
+      if (on !== wasOn) changes++;
+      tr += '<td><div class="mod"><span class="mi">' + m.icon + "</span>" + m.label + "</div></td>" +
+        '<td><label class="sw"><input type="checkbox" data-mod="' + m.id + '"' + (on ? " checked" : "") + "><i></i></label></td>";
+      SA.ACTS.forEach(function (a) {
+        if (m.acts.indexOf(a.id) < 0) { tr += '<td class="na">—</td>'; return; }
+        var now = has(perms, m.id, a.id), was = has(orig, m.id, a.id), d = now !== was; if (d && on === wasOn) changes++;
+        tr += "<td" + (d ? ' class="chg"' : "") + '><input type="checkbox" data-mod="' + m.id + '" data-act="' + a.id + '"' + (now ? " checked" : "") + (on && a.id !== "view" ? "" : " disabled") + "></td>";
+      });
+      return tr + "</tr>";
+    }).join("");
+    $("chgBadge").textContent = changes ? changes + " unsaved change" + (changes > 1 ? "s" : "") : "No changes";
+    $("chgBadge").className = "badge" + (changes ? " warn" : "");
+    $("prev").innerHTML = SA.previewHtml(Object.keys(perms));
+    $("scope").querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", (b.getAttribute("data-val") === "all") === (zones === "all")); });
+    $("zones").style.display = zones === "all" ? "none" : "";
+    document.querySelectorAll("#zones input").forEach(function (c) { c.checked = zones !== "all" && zones.indexOf(c.value) >= 0; });
+  }
+
+  $("body").addEventListener("change", function (e) {
+    var m = e.target.getAttribute("data-mod"), a = e.target.getAttribute("data-act");
+    if (!a) { if (e.target.checked) perms[m] = ["view"]; else delete perms[m]; }
+    else {
+      var l = perms[m] || (perms[m] = []), i = l.indexOf(a);
+      if (e.target.checked && i < 0) l.push(a); else if (!e.target.checked && i >= 0) l.splice(i, 1);
+    }
+    draw();
+  });
+  $("scope").addEventListener("segchange", function (e) {
+    zones = e.detail === "all" ? "all" : (origZones === "all" ? SA.ZONES.slice(0, 1) : origZones.slice());
+    draw();
+  });
+  $("zones").addEventListener("change", function () {
+    zones = Array.prototype.map.call(document.querySelectorAll("#zones input:checked"), function (c) { return c.value; });
+    draw();
+  });
+  $("reset").addEventListener("click", function () { perms = clone(orig); zones = origZones === "all" ? "all" : origZones.slice(); draw(); CX.toast("Reverted to saved permissions"); });
+  $("save").addEventListener("click", function () { CX.toast("Role saved (demo — nothing stored)"); });
+
+  $("rname").value = isNew ? "" : role.name; $("rdesc").value = isNew ? "" : role.desc;
+  $("rname").placeholder = "New role";
+  $("title").textContent = isNew ? "New role" : role.name + " — permissions";
+  $("crumb").textContent = isNew ? "New role" : role.name;
+  var members = isNew ? [] : SA.EMPLOYEES.filter(function (e) { return e.role === role.id; });
+  $("empBadge").textContent = members.length + " employee" + (members.length === 1 ? "" : "s");
+  $("emps").innerHTML = members.map(function (e) {
+    return '<a class="it" href="employee-edit.html?id=' + e.id + '"><div class="avatar">' + SA.initials(e.name) + '</div><div class="grow"><div class="t1">' + e.name + '</div><div class="t2">' + e.email + "</div></div></a>";
+  }).join("") || '<div class="card-b muted small">No employees yet.</div>';
+  $("viewAs").href = isNew ? "#" : "role-view.html?role=" + role.id;
+  draw();
+</script>
+</body>
+</html>

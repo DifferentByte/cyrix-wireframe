@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create Purchase Request</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Requisition · Handbook §1, §2, §25</div>
+      <h1>Create purchase request</h1>
+      <p class="sub">Raised by the Service Coordinator from the PI received from the field. Current calls link to a ticket ID; offline calls use the barcode as the primary reference.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" data-toast="Draft saved">Save draft</button>
+      <button class="btn primary" id="submit">Submit for technical verification</button>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>1. Category & purpose</h2><span class="sec-no">§1.1 · §1.2</span></div>
+        <div class="card-b stack">
+          <div class="row">
+            <div class="seg" id="cat">
+              <button class="on" data-val="item">Item PR</button>
+              <button data-val="service">Service PR</button>
+            </div>
+            <span class="muted small" id="catHint">Spare parts, consumables and other physical items. Select an existing SAP item code.</span>
+          </div>
+          <div class="form f3">
+            <div class="field">
+              <label>Purpose of purchase <span class="req">*</span></label>
+              <select id="purpose">
+                <option value="cc">Current call</option>
+                <option value="oc">Offline call / support call</option>
+                <option value="sb">Standby</option>
+                <option value="amc">AMC / CMC</option>
+                <option value="wo">Work order</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Department</label>
+              <select><option>Service – BEMP</option><option>Sales</option><option>Administration</option><option>IT</option><option>Quality</option><option>Calibration</option></select>
+            </div>
+            <div class="field">
+              <label>Project / zone</label>
+              <select><option>BEMP – Kerala · South</option><option>BEMP – Tamil Nadu · South</option><option>BEMP – Odisha · East</option></select>
+            </div>
+          </div>
+          <div class="flow" id="refFlow"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>2. Call & equipment reference</h2><span class="sec-no">§2</span></div>
+        <div class="card-b stack">
+          <div class="form f3">
+            <div class="field" id="ticketField">
+              <label>Ticket ID <span class="req">*</span></label>
+              <input value="TKT-KL-2409-11873">
+            </div>
+            <div class="field">
+              <label>Barcode / equipment ID <span class="req">*</span></label>
+              <div class="row" style="flex-wrap:nowrap">
+                <input id="barcode" value="CYX-KL-004512">
+                <button class="btn sm" id="lookup">Look up</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>PI reference</label>
+              <input value="PI-KL-5521">
+            </div>
+          </div>
+          <div id="equip" class="card" style="box-shadow:none;background:var(--surface-2)">
+            <div class="card-b">
+              <div class="row between">
+                <div>
+                  <div class="t1" style="font-weight:620">Mindray SV300 Ventilator</div>
+                  <div class="small muted">Parent equipment · S/N SV3-21A09874 · District Hospital Ernakulam · ICU-2</div>
+                </div>
+                <span class="badge good" id="contract"><span class="d"></span>Warranty till 14 Mar 2027</span>
+              </div>
+            </div>
+          </div>
+          <div class="alert bad" id="camcBlock" style="display:none"><b>Part indent blocked.</b>&nbsp;This barcode is under CAMC with the OEM, so spares must be claimed from the CAMC vendor (§19). Raise a service ticket to the CAMC vendor instead.</div>
+          <div id="soBox" style="display:none" class="stack">
+            <div class="form f3">
+              <div class="field"><label>Sales order (SO) no. <span class="req">*</span></label><input id="so" placeholder="e.g. SO-26-0781"></div>
+              <div class="field"><label>Work order no.</label><input placeholder="WO-…"></div>
+              <div class="field"><label>&nbsp;</label><button class="btn" id="verifySo">Verify SO in SAP</button></div>
+            </div>
+            <div class="alert warn" id="soMsg">A work-order purchase can't proceed until the linked sales order is verified (§25).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>3. Line items</h2><span class="sec-no">§1.2</span><button class="btn sm tag" id="addLine">+ Add line</button></div>
+        <div class="card-b stack" id="lines">
+          <div class="grid" style="grid-template-columns:120px 1fr;gap:14px" data-line>
+            <div class="img" data-part="sensor"><span class="cap">SAP image</span></div>
+            <div class="form f3">
+              <div class="field full itemOnly">
+                <label>SAP item code <span class="req">*</span></label>
+                <select>
+                  <option>SP-VEN-00231 · O₂ sensor cell, Mindray SV300/SV600 (OEM 040-001829-00)</option>
+                  <option>SP-VEN-00232 · O₂ sensor cell, compatible (MOX-2 type)</option>
+                  <option>SP-VEN-00118 · Expiratory valve assembly, SV300</option>
+                </select>
+                <div class="hint">Check the image before you pick a code, so the wrong part isn't ordered.</div>
+              </div>
+              <div class="field full svcOnly" style="display:none">
+                <label>Service description <span class="req">*</span></label>
+                <textarea placeholder="Describe the service, e.g. CAMC for Siemens Somatom CT, 12 months, incl. tube coverage, 2 PM visits"></textarea>
+              </div>
+              <div class="field"><label>Quantity <span class="req">*</span></label><input type="number" value="1"></div>
+              <div class="field"><label>UoM</label><select><option>Nos</option><option>Set</option><option>Box</option><option>Job</option></select></div>
+              <div class="field"><label>Required by <span class="req">*</span></label><input type="date" value="2026-10-04"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>4. Technical details & attachments</h2></div>
+        <div class="card-b form">
+          <div class="field full"><label>Other technical details</label><textarea>O₂ reading drifting to 14% on 21% calibration; cell replacement advised by FE after calibration failure (error code 0x2F).</textarea></div>
+          <div class="field full">
+            <label>Supporting images / documents</label>
+            <div class="drop">Drop files here or <b>browse</b> · field photo, service report, PI copy</div>
+            <div class="row mt-s">
+              <span class="badge">field_photo_o2cell.jpg</span>
+              <span class="badge">service_report_11873.pdf</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack" style="position:sticky;top:70px">
+      <div class="card">
+        <div class="card-h"><h3>AI checks</h3><span class="badge ai tag">Auto</span></div>
+        <div class="card-b">
+          <ul class="checks">
+            <li class="ok"><span class="ic">✓</span>Ticket linked to barcode<span class="r">TKT-…11873</span></li>
+            <li class="ok"><span class="ic">✓</span>Item code matches parent model<span class="r">SV300</span></li>
+            <li class="warn"><span class="ic">!</span>Same item issued 42 days ago<span class="r">ITR-KL-8830</span></li>
+            <li class="ok"><span class="ic">✓</span>Stock in Kochi WH<span class="r">0 · 2 in transit</span></li>
+            <li class="ok"><span class="ic">✓</span>Contract status<span class="r">Warranty</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>What happens next</h3></div>
+        <div class="card-b">
+          <ul class="tl">
+            <li class="now"><b>Technical verification</b><div class="when">Required before ITR/IPT or PR (§4)</div></li>
+            <li>ITR / IPT from stock, <i>or</i> PR to Purchase</li>
+            <li>Previous purchase check & vendor sourcing</li>
+            <li>Quotation → comparison → PO</li>
+          </ul>
+        </div>
+      </div>
+      <div class="alert info small">Previously purchased at <b>₹18,400</b> from MedServe Biomedical (PO-26-2871, Jun 2026).</div>
+    </div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+<script>
+(function(){
+  var FLOWS = {
+    cc: ["Ticket ID","Equipment / barcode","Spare requirement","PR"],
+    oc: ["Barcode / equipment ID","Spare requirement","PR"],
+    sb: ["Barcode / equipment ID","Standby requirement","PR"],
+    amc:["Barcode / equipment ID","AMC / CMC scope","Service PR"],
+    wo: ["PR (work order)","SO verification","SO available","Procurement","PO"]
+  };
+  var purpose = document.getElementById("purpose");
+  function render(){
+    var v = purpose.value;
+    document.getElementById("refFlow").innerHTML = FLOWS[v].map(function(s,i){
+      return (i?'<span class="a">→</span>':'')+'<span class="s'+(i===0?' now':'')+'">'+s+'</span>';
+    }).join("");
+    document.getElementById("ticketField").style.display = v==="cc" ? "" : "none";
+    document.getElementById("soBox").style.display = v==="wo" ? "" : "none";
+    if (v==="amc") setCat("service");
+  }
+  purpose.addEventListener("change", render);
+
+  function setCat(c){
+    document.querySelectorAll("#cat button").forEach(function(b){ b.classList.toggle("on", b.dataset.val===c); });
+    document.querySelectorAll(".itemOnly").forEach(function(e){ e.style.display = c==="item"?"":"none"; });
+    document.querySelectorAll(".svcOnly").forEach(function(e){ e.style.display = c==="service"?"":"none"; });
+    document.getElementById("catHint").textContent = c==="item"
+      ? "Spare parts, consumables and other physical items. Select an existing SAP item code."
+      : "Services, including AMC/CAMC, where an item code may not exist. Enter a detailed description.";
+  }
+  document.getElementById("cat").addEventListener("segchange", function(e){ setCat(e.detail); });
+
+  document.getElementById("lookup").addEventListener("click", function(){
+    var camc = /9$/.test(document.getElementById("barcode").value);
+    var c = document.getElementById("contract");
+    c.className = "badge " + (camc ? "bad" : "good");
+    c.innerHTML = '<span class="d"></span>' + (camc ? "Under CAMC · OEM till 31 Mar 2027" : "Warranty till 14 Mar 2027");
+    document.getElementById("camcBlock").style.display = camc ? "" : "none";
+    CX.toast(camc ? "Barcode is under CAMC, so part indent is blocked" : "Equipment details loaded from asset master");
+  });
+
+  document.getElementById("verifySo").addEventListener("click", function(){
+    var m = document.getElementById("soMsg");
+    if (!document.getElementById("so").value.trim()){ m.className="alert bad"; m.textContent="Enter the SO number to verify."; return; }
+    m.className="alert good"; m.innerHTML="<b>SO verified.</b>&nbsp;SO-26-0781 · Govt. Medical College, Kottayam · open, ₹4.6 L balance.";
+  });
+
+  document.getElementById("addLine").addEventListener("click", function(){
+    var first = document.querySelector("[data-line]");
+    var n = first.cloneNode(true);
+    n.querySelector(".img svg") && n.querySelector(".img svg").remove();
+    document.getElementById("lines").appendChild(n);
+    CX.paintImages(n);
+  });
+
+  document.getElementById("submit").addEventListener("click", function(){
+    if (document.getElementById("camcBlock").style.display === ""){ CX.toast("Can't submit: barcode is under CAMC"); return; }
+    CX.toast("PR-26-1231 submitted. Technical team notified.");
+  });
+
+  document.getElementById("barcode").addEventListener("keydown", function(e){ if(e.key==="Enter") document.getElementById("lookup").click(); });
+  render();
+})();
+</script>
+</body>
+</html>

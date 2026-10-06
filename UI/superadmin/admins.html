@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin accounts</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Super Admin · Access control</div>
+      <h1>Admin accounts</h1>
+      <p class="sub">Admins help you run Cyrix. You decide what each admin can manage and which teams they cover. Only the Super Admin can create, edit or remove admin accounts.</p>
+    </div>
+    <div class="actions">
+      <a class="btn primary" href="admin-edit.html"><span class="mi">add_moderator</span>Create admin</a>
+    </div>
+  </div>
+
+  <div class="grid g3" id="kpis"></div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>All admins</h2>
+      <div class="row" style="margin-left:auto">
+        <input id="q" placeholder="Search name or email…" style="width:230px">
+        <select id="fType"><option value="">All admin types</option></select>
+        <select id="fStatus"><option value="">All status</option><option>active</option><option>invited</option><option>inactive</option></select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th>Admin</th><th>Type</th><th>Can manage</th><th>Teams covered</th><th>2-step login</th><th>Status</th><th>Last login</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>Admin types</h2></div>
+    <div class="card-b"><div class="grid g4" id="types"></div>
+      <p class="small faint" style="margin:12px 0 0">A type is only a starting point — every power can be switched on or off per admin on the edit screen.</p></div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var tone = { active: "good", invited: "warn", inactive: "bad" };
+  var typeName = function (id) { if (id === "super") return "Super Admin"; var p = SA.ADMIN_PRESETS.filter(function (x) { return x.id === id; })[0]; return p ? p.name : "Custom"; };
+  var teamsText = function (t) { return t === "all" ? "All teams" : t.map(SA.teamName).join(", "); };
+  function powers(a) {
+    if (a.preset === "super") return '<span class="badge info">Everything</span>';
+    var p = SA.ADMIN_PRESETS.filter(function (x) { return x.id === a.preset; })[0]; if (!p) return '<span class="faint">Custom</span>';
+    var acts = Object.keys(p.monitor).filter(function (k) { return p.monitor[k] === "act"; }).length;
+    return (p.access.length ? p.access.length + " access · " : "") + acts + " act-on modules";
+  }
+
+  $("fType").innerHTML += SA.ADMIN_PRESETS.map(function (p) { return '<option value="' + p.id + '">' + p.name + "</option>"; }).join("");
+  var act = SA.ADMINS.filter(function (a) { return a.status === "active"; }).length;
+  var k = [["Admin accounts", SA.ADMINS.length, act + " active", "admin_panel_settings"], ["Invited", SA.ADMINS.filter(function (a) { return a.status === "invited"; }).length, "haven't signed in yet", "mail"],
+["Super Admin", 1, "can't be removed", "verified_user"]];
+  $("kpis").innerHTML = k.map(function (x) { return '<div class="card kpi"><div class="l">' + x[0] + '</div><span class="mi kpi-ic">' + x[3] + '</span><div class="v">' + x[1] + '</div><div class="d">' + x[2] + "</div></div>"; }).join("");
+  $("types").innerHTML = SA.ADMIN_PRESETS.map(function (p) {
+    var n = SA.ADMINS.filter(function (a) { return a.preset === p.id; }).length;
+    return '<div class="card" style="padding:14px 16px"><div class="row between"><b>' + p.name + '</b><span class="badge">' + n + '</span></div><div class="small muted" style="margin-top:6px">' + p.desc + "</div></div>";
+  }).join("");
+
+  function render() {
+    var q = $("q").value.toLowerCase(), ft = $("fType").value, fs = $("fStatus").value;
+    $("rows").innerHTML = SA.ADMINS.filter(function (a) { return (!q || (a.name + a.email).toLowerCase().indexOf(q) >= 0) && (!ft || a.preset === ft) && (!fs || a.status === fs); }).map(function (a) {
+      var acts = a.locked
+        ? '<span class="badge info"><span class="mi" style="font-size:14px">lock</span>Owner</span>'
+        : '<a class="btn sm" href="admin-edit.html?id=' + a.id + '">Edit</a> ' + (a.status === "inactive"
+          ? '<button class="btn sm" data-toast="' + a.name + ' reactivated (demo)" type="button">Activate</button>'
+          : '<button class="btn sm danger" data-toast="' + a.name + ' deactivated (demo)" type="button">Deactivate</button>');
+      return '<tr><td><div class="who"><div class="avatar">' + SA.initials(a.name) + "</div><div><b>" + a.name + "</b><small>" + a.email + "</small></div></div></td>" +
+        '<td><span class="badge ' + (a.preset === "super" ? "info" : "") + '">' + typeName(a.preset) + '</span></td><td class="small">' + powers(a) + "</td><td class='small'>" + teamsText(a.teams) + "</td>" +
+        '<td>' + (a.mfa ? '<span class="badge good"><span class="d"></span>on</span>' : '<span class="badge warn"><span class="d"></span>off</span>') + '</td><td><span class="badge ' + tone[a.status] + '"><span class="d"></span>' + a.status + "</span></td>" +
+        '<td class="small muted nowrap">' + a.last + '</td><td class="nowrap">' + acts + "</td></tr>";
+    }).join("") || '<tr><td colspan="8" class="muted" style="padding:24px 20px">No admins match.</td></tr>';
+  }
+  ["q", "fType", "fStatus"].forEach(function (id) { $(id).addEventListener("input", render); });
+  render();
+</script>
+</body>
+</html>

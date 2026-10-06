@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb"><a href="teams.html">Teams</a> · <span id="crumb"></span></div>
+      <h1 id="title"></h1>
+      <p class="sub" id="sub"></p>
+    </div>
+    <div class="actions">
+      <select id="lead" title="Team lead"></select>
+      <button class="btn primary" data-open="addMember" type="button"><span class="mi">person_add</span>Add member</button>
+    </div>
+  </div>
+
+  <div class="grid g4" id="kpis"></div>
+
+  <div class="stack mt">
+    <div class="card">
+      <div class="card-h"><h2>Members</h2><span class="tag small muted" id="mCount"></span></div>
+      <div class="table-wrap">
+        <table class="t">
+          <thead><tr><th>Employee</th><th class="num">Assigned</th><th class="num">Approved</th><th class="num">Pending</th><th class="num">Overdue</th><th>Progress</th><th class="num">Avg TAT</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="order:-1">
+      <div class="card-h"><h2>Pending PIs by member</h2></div>
+      <div class="card-b" id="chart"></div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="addMember">
+    <div class="modal" style="width:min(460px,100%)">
+      <div class="card-h"><h2>Add member</h2><button class="btn sm tag" data-close type="button">✕</button></div>
+      <div class="card-b">
+        <div class="field"><label>Employee</label><select id="addPick"></select>
+          <div class="hint">One employee belongs to one team — picking someone from another team moves them here.</div></div>
+      </div>
+      <div class="card-f"><button class="btn" data-close type="button">Cancel</button>
+        <button class="btn primary" data-close data-toast="Member added (demo — nothing stored)" type="button">Add</button></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var team = SA.team(SA.param("team")) || SA.TEAMS[0], mem = SA.teamMembers(team.id), s = SA.teamStats(team.id);
+  $("crumb").textContent = team.name; $("title").textContent = team.name + " team"; $("sub").textContent = team.desc;
+  $("lead").innerHTML = mem.map(function (e) { return '<option value="' + e.id + '"' + (e.id === team.lead ? " selected" : "") + ">Lead: " + e.name + "</option>"; }).join("");
+  $("lead").addEventListener("change", function () { CX.toast("Team lead changed (demo)"); });
+  $("addPick").innerHTML = SA.EMPLOYEES.filter(function (e) { return e.team !== team.id; }).map(function (e) { return "<option>" + e.name + " — " + SA.teamName(e.team) + "</option>"; }).join("");
+
+  var kp = [
+    ["Total PIs assigned", s.assigned, s.members + " members", "assignment"],
+    ["Approved", s.approved, s.rate + "% approval rate", "task_alt"],
+    ["Pending", s.pending, s.overdue + " overdue (>3 days)", "pending_actions"],
+    ["Avg turnaround", s.tat + " h", "assign → approve", "schedule"]
+  ];
+  $("kpis").innerHTML = kp.map(function (k, i) {
+    return '<div class="card kpi"><div class="l">' + k[0] + '</div><span class="mi kpi-ic">' + k[3] + '</span><div class="v"' + (i === 2 && s.overdue ? ' style="color:var(--danger)"' : "") + ">" + k[1] + '</div><div class="d">' + k[2] + "</div></div>";
+  }).join("");
+
+  $("mCount").textContent = mem.length + " employees";
+  $("rows").innerHTML = mem.map(function (e) {
+    var w = SA.work(e.id), pct = w.assigned ? w.approved / w.assigned * 100 : 0;
+    return '<tr><td><div class="who"><div class="avatar">' + SA.initials(e.name) + "</div><div><b>" + e.name + (e.id === team.lead ? ' <span class="badge info">lead</span>' : "") + "</b><small>" + SA.role(e.role).name + "</small></div></div></td>" +
+      '<td class="num">' + w.assigned + '</td><td class="num">' + w.approved + '</td><td class="num"><b>' + w.pending + '</b></td><td class="num" style="' + (w.overdue ? "color:var(--danger);font-weight:600" : "") + '">' + w.overdue + "</td>" +
+      '<td><div class="wbar"><i class="ok" style="width:' + pct + '%"></i><i class="pend" style="width:' + (w.assigned ? 100 - pct : 0) + '%"></i></div></td>' +
+      '<td class="num">' + (w.tat ? w.tat + " h" : "—") + '</td><td><a class="btn sm" href="employee-workload.html?id=' + e.id + '">View PIs</a></td></tr>';
+  }).join("");
+
+  var max = Math.max.apply(null, mem.map(function (e) { return SA.work(e.id).pending; }).concat([1]));
+  $("chart").innerHTML = mem.slice().sort(function (a, b) { return SA.work(b.id).pending - SA.work(a.id).pending; }).map(function (e) {
+    var w = SA.work(e.id);
+    return '<div class="hb"><a href="employee-workload.html?id=' + e.id + '">' + e.name + '</a><div class="track"><i class="' + (w.overdue ? "hot" : "") + '" style="width:' + w.pending / max * 100 + '%"></i></div><span class="n">' + w.pending + "</span></div>";
+  }).join("") + '<p class="small faint" style="margin:12px 0 0">Red bars = member has overdue PIs.</p>';
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PI Unified data</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Super Admin · Monitor & act</div>
+      <h1>PI Unified data</h1>
+      <p class="sub" id="subtitle">The same pooled purchase-indent data every employee sees, plus who currently holds each one.</p>
+    </div>
+    <div class="actions">
+      <div id="range"></div>
+      <span class="badge info"><span class="mi" style="font-size:14px">visibility</span>Super Admin view · all teams</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-b"><div class="pool-strip" id="poolStrip"><span class="label">Background pool</span></div></div>
+  </div>
+
+  <div class="grid g4 mt">
+    <div class="card kpi"><div class="l">Total records</div><div class="v" id="kTotal">—</div><div class="d" id="kNote"></div></div>
+    <div class="card kpi"><div class="l">Online indents</div><div class="v" id="kOnline">—</div></div>
+    <div class="card kpi"><div class="l">Offline / support</div><div class="v" id="kOffline">—</div></div>
+    <div class="card kpi"><div class="l">Approved</div><div class="v" id="kApproved">—</div></div>
+  </div>
+
+  <div class="grid g2 mt">
+    <div class="card">
+      <div class="card-h"><h2>By state</h2></div>
+      <div class="card-b" id="stateBars"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>By status</h2></div>
+      <div class="table-wrap">
+        <table class="t"><thead><tr><th>Status</th><th class="num">Count</th></tr></thead><tbody id="statusRows"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-h">
+      <h2>Records</h2>
+      <div class="row" style="margin-left:auto">
+        <input id="q" placeholder="Search description, requestor, indent…" style="width:240px">
+        <select id="fTeam"><option value="">All teams</option></select>
+        <select id="fEmp"><option value="">All employees</option></select>
+        <select id="fState"><option value="">All states</option></select>
+        <select id="fType"><option value="">All call types</option><option value="current_call">Online (current calls)</option><option value="support_call">Offline (support calls)</option></select>
+      </div>
+    </div>
+    <div class="card-b small muted" id="rowcount" style="padding-bottom:0"></div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th>State</th><th>Type</th><th>Indent / Ticket</th><th>Description</th><th>Requestor</th><th>Status</th><th>Date</th><th>Held by</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="small faint mt">Stored snapshot of real Cyrix data — identical to what employees see on their PI Unified data page.</p>
+
+</main>
+
+<script src="../assets/mock-data.js"></script>
+<script src="../assets/cyrix-range.js"></script>
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var MOCK = window.CX_MOCK || {}, sum = MOCK.summary, calls = MOCK.calls || [];
+  var ZMAP = { AP: "Andhra Pradesh", UP: "Uttar Pradesh", Rajasthan: "Rajasthan", Kerala: "Kerala" };
+
+  // Every record is held by one employee: purchase / approvals staff covering the record's zone.
+  function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
+  function holder(r) {
+    var z = ZMAP[r.state] || r.state, act = SA.EMPLOYEES.filter(function (e) { return e.status === "active"; });
+    var pool = act.filter(function (e) { return (e.team === "purchase" || e.team === "approvals") && (e.zones === "all" || e.zones.indexOf(z) >= 0); });
+    if (!pool.length) pool = act.filter(function (e) { return e.team === "purchase"; });
+    return pool[hash(r.id) % pool.length];
+  }
+  calls.forEach(function (r) { r._h = holder(r); });
+
+  var range = CXR.create($("range"), function () { draw(); });
+  $("fTeam").innerHTML += SA.TEAMS.map(function (t) { return '<option value="' + t.id + '">' + t.name + "</option>"; }).join("");
+  $("fEmp").innerHTML += SA.EMPLOYEES.filter(function (e) { return e.status === "active" && (e.team === "purchase" || e.team === "approvals"); }).map(function (e) { return '<option value="' + e.id + '">' + e.name + "</option>"; }).join("");
+  $("fState").innerHTML += Object.keys(sum.counts.by_state).map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + "</option>"; }).join("");
+
+  function rel(iso) { if (!iso) return "never"; var s = Math.max(0, (Date.now() - new Date(iso)) / 1000); return s < 3600 ? Math.round(s / 60) + "m ago" : s < 86400 ? Math.round(s / 3600) + "h ago" : Math.round(s / 86400) + "d ago"; }
+  var src = (MOCK.poolStatus && MOCK.poolStatus.sources) || [];
+  $("poolStrip").innerHTML = '<span class="label">Background pool</span>' + src.map(function (s) {
+    return '<span class="pool-chip ' + esc(s.status) + '" title="' + esc(s.last_error || "") + '"><span class="dot"></span><b>' + esc(s.source_name) + "</b> " + esc(s.status) + " · " + rel(s.last_success_at) + "</span>";
+  }).join("");
+
+  function derive(list) {
+    var by = function (k) { return list.reduce(function (a, r) { a[r[k]] = (a[r[k]] || 0) + 1; return a; }, {}); };
+    return { total: list.length, by_call_type: by("call_type"), by_state: by("state"), by_status: by("status") };
+  }
+
+  function draw() {
+    var q = $("q").value.trim().toLowerCase(), ft = $("fTeam").value, fe = $("fEmp").value, fs = $("fState").value, fy = $("fType").value;
+    var filtered = !!(q || ft || fe || fs || fy);
+    var list = calls.filter(function (r) {
+      return range.contains(r.date) && (!fs || r.state === fs) && (!fy || r.call_type === fy) && (!ft || r._h.team === ft) && (!fe || r._h.id === fe) &&
+        (!q || [r.id, r.desc, r.requestor, r.status, r.state].join(" ").toLowerCase().indexOf(q) >= 0);
+    });
+    // Same full-pool totals employees see, as long as the range covers the snapshot and nothing else is filtered.
+    var full = !filtered && range.covers(sum.start_date, sum.end_date);
+    var c = full ? sum.counts : derive(list);
+
+    $("subtitle").textContent = full
+      ? sum.start_date + " → " + sum.end_date + " · " + c.total + " records pooled from UP, Kerala, AP and Rajasthan — the same totals employees see."
+      : range.label() + " · " + c.total + " records match (counted from the " + calls.length + " stored sample records).";
+    $("kNote").textContent = full ? "all pooled records" : "from sample records";
+    $("kTotal").textContent = c.total; $("kOnline").textContent = c.by_call_type.current_call || 0;
+    $("kOffline").textContent = c.by_call_type.support_call || 0; $("kApproved").textContent = c.by_status.Approved || 0;
+
+    var states = Object.keys(c.by_state).map(function (k) { return [k, c.by_state[k]]; }).sort(function (a, b) { return b[1] - a[1]; }), mx = Math.max.apply(null, states.map(function (s) { return s[1]; }).concat([1]));
+    $("stateBars").innerHTML = states.map(function (s) {
+      return '<div class="bar-row"><div class="name">' + esc(s[0]) + '</div><div class="track"><div class="seg solid" style="width:' + Math.round(s[1] / mx * 100) + '%"></div></div><div class="val">' + s[1] + "</div></div>";
+    }).join("") || '<span class="muted">No records.</span>';
+    $("statusRows").innerHTML = Object.keys(c.by_status).map(function (k) { return [k, c.by_status[k]]; }).sort(function (a, b) { return b[1] - a[1]; })
+      .map(function (s) { return "<tr><td>" + esc(s[0]) + '</td><td class="num">' + s[1] + "</td></tr>"; }).join("") || '<tr><td colspan="2" class="muted">No records.</td></tr>';
+
+    $("rows").innerHTML = list.map(function (r) {
+      var on = r.call_type === "current_call", h = r._h;
+      return '<tr><td><span class="badge">' + esc(r.state) + '</span></td><td><span class="badge ' + (on ? "info" : "warn") + '">' + (on ? "Online" : "Offline") + "</span></td><td class='mono'>" + esc(r.id || "—") + "</td>" +
+        '<td class="desc">' + esc((r.desc || "—").slice(0, 160)) + "</td><td>" + esc(r.requestor || "—") + "</td><td>" + esc(r.status) + "</td><td class='nowrap'>" + esc(r.date || "—") + "</td>" +
+        '<td><a href="employee-workload.html?id=' + h.id + '">' + esc(h.name) + '</a><div class="small faint">' + esc(SA.teamName(h.team)) + "</div></td></tr>";
+    }).join("") || '<tr><td colspan="8" class="muted" style="padding:24px 20px">No records in this range.</td></tr>';
+    $("rowcount").textContent = list.length + " of " + calls.length + " sample records match" + (full ? " (full totals above cover all " + sum.counts.total + " pooled records)" : "");
+  }
+  ["q", "fTeam", "fEmp", "fState", "fType"].forEach(function (id) { $(id).addEventListener("input", draw); });
+  draw();
+</script>
+</body>
+</html>

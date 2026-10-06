@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Field Acknowledgement</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Receiving · Handbook §17</div>
+      <h1>Field acknowledgement</h1>
+      <p class="sub">The engineer's mobile view. Receipt is confirmed with a photo, the invoice, a timestamp and location, which notifies the coordinator, purchase and warehouse and starts the next step.</p>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start">
+    <div class="phone">
+      <div class="phone-top">
+        <div class="small">Cyrix Field · Arun Mathew</div>
+        <h2 style="margin-top:4px">Confirm receipt</h2>
+      </div>
+      <div class="phone-body" id="ackBody">
+        <div class="card" style="box-shadow:none">
+          <div class="card-b row" style="flex-wrap:nowrap">
+            <div class="img" data-part="sensor" style="width:72px;flex:none"></div>
+            <div><b>O₂ sensor cell ×1</b><div class="small muted">ITR-KL-8912 · PO-26-3312<br>For CYX-KL-004512 · TKT-…11873</div></div>
+          </div>
+        </div>
+        <div class="field"><label>Photo of received item</label><div class="drop">Tap to take photo</div></div>
+        <div class="field"><label>Invoice / delivery challan</label><div class="drop">Scan document</div></div>
+        <div class="grid g2" style="gap:8px">
+          <div class="field"><label>Date & time</label><input value="30 Sep 2026, 14:22" readonly></div>
+          <div class="field"><label>Location</label><input value="DH Ernakulam ✓ GPS" readonly></div>
+        </div>
+        <div class="field"><label>Condition</label>
+          <div class="seg" style="width:100%"><button class="on" style="flex:1">Good</button><button style="flex:1">Damaged</button><button style="flex:1">Wrong item</button></div>
+        </div>
+        <button class="btn primary" id="ack" style="justify-content:center;padding:12px">Acknowledge receipt</button>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h3>On acknowledgement, AOS notifies</h3></div>
+        <div class="card-b">
+          <ul class="checks">
+            <li class="ok"><span class="ic">✓</span>Service Coordinator<span class="r">Meera P.</span></li>
+            <li class="ok"><span class="ic">✓</span>Purchase Executive<span class="r">Priya K.</span></li>
+            <li class="ok"><span class="ic">✓</span>Warehouse team<span class="r">Kochi WH</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Triggered next</h3></div>
+        <div class="card-b">
+          <ul class="tl">
+            <li>Invoice / GRN linkage confirmed</li>
+            <li>ITR closed against the engineer</li>
+            <li>Ticket TKT-KL-2409-11873 updated: spare received</li>
+            <li>Warranty clock tied to barcode CYX-KL-004512 (§18)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Pending acknowledgements</h3><span class="badge warn tag">3</span></div>
+        <div class="list">
+          <div class="it"><div class="grow"><div class="t1">NIBP cuff ×4 · Sreeja V.</div><div class="t2">Delivered 28 Sep · no ack 2 days</div></div><button class="btn sm" data-toast="Reminder sent to Sreeja V.">Nudge</button></div>
+          <div class="it"><div class="grow"><div class="t1">Suction filter ×6 · Rahul D.</div><div class="t2">Delivered 29 Sep</div></div><button class="btn sm" data-toast="Reminder sent to Rahul D.">Nudge</button></div>
+          <div class="it"><div class="grow"><div class="t1">Battery ×2 · Karthik R.</div><div class="t2">Delivered today</div></div><span class="badge">New</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+<script>
+document.getElementById("ack").addEventListener("click", function(){
+  document.getElementById("ackBody").innerHTML =
+    '<div style="text-align:center;padding:30px 10px"><div class="ring" style="--p:100;margin:0 auto"><span>✓</span></div>' +
+    '<h2 style="margin-top:14px">Receipt acknowledged</h2><p class="muted small mt-s">ACK-KL-30921 · 30 Sep 2026, 14:22<br>Coordinator, purchase and warehouse notified.</p></div>';
+});
+</script>
+</body>
+</html>

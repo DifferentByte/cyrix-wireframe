@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Vendor Request</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Sourcing · Handbook §12</div>
+      <h1>New vendor request · BioSense Instruments</h1>
+      <p class="sub">The selected vendor isn't in SAP. Collect the documents below and the request goes to Finance automatically for verification and a vendor code.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" data-toast="Document request link emailed to vendor">Email vendor for documents</button>
+      <button class="btn primary" id="fwd">Forward to Finance</button>
+    </div>
+  </div>
+
+  <div class="card"><div class="card-b">
+    <div class="steps">
+      <div class="st done">Vendor selection</div>
+      <div class="st now">Vendor creation request</div>
+      <div class="st">Finance verification</div>
+      <div class="st">Vendor code created</div>
+      <div class="st">Code updated in AOS</div>
+      <div class="st">PO processing</div>
+    </div>
+  </div></div>
+
+  <div class="split mt">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Vendor details</h2></div>
+        <div class="card-b form">
+          <div class="field full"><label>Legal name <span class="req">*</span></label><input value="BioSense Instruments Pvt Ltd"></div>
+          <div class="field"><label>GSTIN <span class="req">*</span></label><input class="mono" value="29AAKCB4471M1ZQ"></div>
+          <div class="field"><label>PAN <span class="req">*</span></label><input class="mono" value="AAKCB4471M"></div>
+          <div class="field full"><label>Address <span class="req">*</span></label><textarea>No. 42, 3rd Cross, Peenya Industrial Area Phase 2, Bengaluru, Karnataka 560058</textarea></div>
+          <div class="field"><label>Contact person</label><input value="Ravi Shankar"></div>
+          <div class="field"><label>Phone / email</label><input value="+91 98450 11234 · sales@biosense.example"></div>
+          <div class="field"><label>Bank account no.</label><input class="mono" value="50200041129987"></div>
+          <div class="field"><label>IFSC</label><input class="mono" value="HDFC0001234"></div>
+          <div class="field"><label>Vendor category</label><select><option>Spares – Medical</option><option>Services – CMC</option><option>Admin / IT</option></select></div>
+          <div class="field"><label>MSME status</label><select><option>Micro</option><option>Small</option><option>Medium</option><option>Not registered</option></select></div>
+        </div>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h3>Required documents</h3><span class="badge warn tag">5 / 7</span></div>
+        <div class="card-b">
+          <ul class="checks">
+            <li class="ok"><span class="ic">✓</span>Vendor creation form<span class="r">signed</span></li>
+            <li class="ok"><span class="ic">✓</span>GST certificate<span class="r">GSTIN verified</span></li>
+            <li class="ok"><span class="ic">✓</span>PAN<span class="r">matches GST</span></li>
+            <li class="ok"><span class="ic">✓</span>Cancelled cheque<span class="r">OCR: HDFC</span></li>
+            <li class="ok"><span class="ic">✓</span>Bank details<span class="r">penny-drop ✓</span></li>
+            <li class="warn"><span class="ic">!</span>Address proof<span class="r"><button class="btn sm">Upload</button></span></li>
+            <li class="bad"><span class="ic">✕</span>MSME certificate<span class="r"><button class="btn sm">Upload</button></span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Linked to</h3></div>
+        <div class="card-b"><dl class="kv"><dt>PR</dt><dd class="mono">PR-26-1192</dd><dt>Quotation</dt><dd>₹56,280 total</dd><dt>Requested by</dt><dd>Priya K.</dd><dt>Finance owner</dt><dd>Anand S. (AP team)</dd></dl></div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+<script>
+document.getElementById("fwd").addEventListener("click", function(){
+  var s = document.querySelectorAll(".steps .st"); s[1].className="st done"; s[2].className="st now";
+  CX.toast("VCR-0088 forwarded to Finance. You'll be notified when the vendor code is created.");
+});
+</script>
+</body>
+</html>

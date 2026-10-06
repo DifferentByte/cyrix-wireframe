@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warranty, CMC & PM</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">After purchase · Handbook §18, §19, §20</div>
+      <h1>Warranty, CMC & PM reports</h1>
+      <p class="sub">Warranty is captured on the PO and GRN and tracked per barcode. CMC contracts raise renewal alerts 30 days before expiry, and CMC vendors get automatic PM report reminders.</p>
+    </div>
+  </div>
+
+  <div class="grid g4">
+    <div class="card kpi"><div class="l">Items under warranty</div><div class="v">1,284</div></div>
+    <div class="card kpi"><div class="l">Open warranty claims</div><div class="v">6</div></div>
+    <div class="card kpi"><div class="l">CMC renewals ≤ 30 days</div><div class="v down">2</div></div>
+    <div class="card kpi"><div class="l">PM reports awaited</div><div class="v">3</div></div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>Warranty register</h2><span class="sec-no">§18</span></div>
+    <div class="table-wrap"><table class="t">
+      <thead><tr><th>Item</th><th>PO</th><th>Vendor</th><th>Barcode</th><th>Start</th><th>End</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>O₂ sensor cell</td><td class="mono">PO-26-2871</td><td>MedServe Biomedical</td><td class="mono">CYX-KL-004512</td><td>19 Aug 2026</td><td>18 Feb 2027</td><td><span class="badge bad">Failed in warranty</span></td><td><button class="btn sm primary">Raise claim</button></td></tr>
+        <tr><td>ECG lead set 5-wire</td><td class="mono">PO-26-3298</td><td>Kovai Medical Tech</td><td class="mono">—</td><td>30 Sep 2026</td><td>29 Sep 2027</td><td><span class="badge good">Active</span></td><td></td></tr>
+        <tr><td>Infusion pump battery</td><td class="mono">PO-26-2210</td><td>Delta Surgicals</td><td class="mono">CYX-TN-011207</td><td>04 Apr 2026</td><td>03 Oct 2026</td><td><span class="badge warn">Expires in 3 d</span></td><td></td></tr>
+        <tr><td>SpO₂ sensor adult</td><td class="mono">PO-26-1877</td><td>Aarav Healthcare</td><td class="mono">CYX-KL-003390</td><td>12 Jan 2026</td><td>11 Jan 2027</td><td><span class="badge info">Claim open · WC-26-0071</span></td><td></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>CMC contracts</h2><span class="sec-no">§19</span></div>
+    <div class="card-b stack" style="gap:10px">
+      <div class="alert warn"><b>2 CMC renewals within 30 days.</b>&nbsp;Purchase, field team and Service Coordinator have been alerted. The field team must confirm the requirement before renewal.</div>
+      <div class="alert info">Part indents are <b>&nbsp;blocked&nbsp;</b> for barcodes under CAMC. Spares for these machines are claimed from the CMC vendor.</div>
+    </div>
+    <div class="table-wrap"><table class="t">
+      <thead><tr><th>Barcode</th><th>Equipment</th><th>Vendor</th><th>Scope</th><th>Period</th><th>CMC PO</th><th>Status</th><th>Field check</th><th></th></tr></thead>
+      <tbody>
+        <tr><td class="mono">CYX-KL-000102</td><td>Siemens Somatom CT</td><td>Siemens Healthineers</td><td>Comprehensive incl. tube</td><td>Nov 2025 – Oct 2026</td><td class="mono">PO-25-4410</td><td><span class="badge warn">Expires in 31 d</span></td><td><span class="badge good">Confirmed</span></td><td><button class="btn sm primary">Renew → PR</button></td></tr>
+        <tr><td class="mono">CYX-TN-000455</td><td>GE Voluson E8 USG</td><td>Wipro GE</td><td>Comprehensive excl. probes</td><td>Oct 2025 – Oct 2026</td><td class="mono">PO-25-4102</td><td><span class="badge bad">Expires in 14 d</span></td><td><span class="badge warn">Awaiting FE</span></td><td><button class="btn sm">Remind FE</button></td></tr>
+        <tr><td class="mono">CYX-OD-000871</td><td>Allengers MARS 60 X-ray</td><td>Allengers</td><td>Non-comprehensive</td><td>Apr 2026 – Mar 2027</td><td class="mono">PO-26-0331</td><td><span class="badge good">Active</span></td><td>—</td><td></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>PM reports from CMC vendors</h2><span class="sec-no">§20</span></div>
+    <div class="card-b">
+      <div class="flow"><span class="s">2 PMs per agreement (6 months & year end)</span><span class="a">→</span><span class="s done">Automatic vendor reminder</span><span class="a">→</span><span class="s now">PM report submission</span><span class="a">→</span><span class="s">System upload</span><span class="a">→</span><span class="s">Review</span></div>
+    </div>
+    <div class="table-wrap"><table class="t">
+      <thead><tr><th>Vendor</th><th>Equipment · barcode</th><th>CMC PO</th><th>Service period</th><th>PM due</th><th>Reminder</th><th>Report</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>Siemens Healthineers</td><td>Somatom CT · CYX-KL-000102</td><td class="mono">PO-25-4410</td><td>H2 (May–Oct)</td><td>15 Oct</td><td>Sent 30 Sep</td><td><span class="badge warn">Awaited</span></td><td></td></tr>
+        <tr><td>Allengers</td><td>MARS 60 · CYX-OD-000871</td><td class="mono">PO-26-0331</td><td>H1 (Apr–Sep)</td><td>30 Sep</td><td>Sent 15 & 25 Sep</td><td><span class="badge info">Uploaded</span></td><td><button class="btn sm primary">Review</button></td></tr>
+        <tr><td>Wipro GE</td><td>Voluson E8 · CYX-TN-000455</td><td class="mono">PO-25-4102</td><td>H2 (Apr–Oct)</td><td>10 Oct</td><td>Scheduled 1 Oct</td><td><span class="badge">Not due</span></td><td></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>High-value POs</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content" id="app"></main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script src="sa-monitor.js"></script>
+<script>
+  // Who gets pinged when a PO crosses the limit: the Super Admin plus every admin with the "Approve high-value POs" power.
+  function approvers() {
+    return SA.ADMINS.filter(function (a) {
+      if (a.preset === "super") return true;
+      var p = SA.ADMIN_PRESETS.filter(function (x) { return x.id === a.preset; })[0]; return p && p.access.indexOf("po") >= 0;
+    });
+  }
+  function channels() { var n = SA.POLICY.notify; return [n.app && "In-app bell", n.email && "Email", n.whatsapp && "WhatsApp"].filter(Boolean).join(" · ") || "No channel selected"; }
+
+  function before() {
+    var w = SA.poWaiting()[0];
+    var sample = w ? w.id + " · " + w.vendor + " · " + CX.inr(w.value) : "PO-45123 · Medisys Spares Pvt Ltd · ₹1,34,500";
+    var who = approvers().map(function (a) {
+      var tag = a.preset === "super" ? '<span class="badge info">Super Admin</span>' : a.status === "invited" ? '<span class="badge warn">invited</span>' : "";
+      return '<div class="it" style="cursor:default"><div class="avatar">' + SA.initials(a.name) + '</div><div class="grow"><div class="t1">' + a.name + " " + tag + '</div><div class="t2">' + a.email + "</div></div></div>";
+    }).join("");
+    return '<div class="grid g2 mt">' +
+      '<div class="card"><div class="card-h"><h2>Approval rule</h2></div><div class="card-b">' +
+        '<p class="small muted" style="margin-top:0">When a PO is worth more than the limit below, the buyer cannot sign it off. It waits here until an admin approves it.</p>' +
+        '<div class="form"><div class="field"><label>POs above (₹)</label><input id="limit" type="number" min="0" step="1000" value="' + SA.POLICY.poThreshold + '"><div class="hint">1,00,000 = 1 lakh</div></div>' +
+        '<div class="field"><label>Remind approvers again after</label><select id="remind"><option value="12">12 hours</option><option value="24" selected>24 hours</option><option value="48">48 hours</option></select></div>' +
+        '<div class="field full"><label>Notify through</label><div class="zones">' +
+          '<label><input type="checkbox" data-ch="app"' + (SA.POLICY.notify.app ? " checked" : "") + '> In-app bell</label><label><input type="checkbox" data-ch="email"' + (SA.POLICY.notify.email ? " checked" : "") + '> Email</label><label><input type="checkbox" data-ch="whatsapp"' + (SA.POLICY.notify.whatsapp ? " checked" : "") + '> WhatsApp</label></div></div></div>' +
+        '</div><div class="card-f"><button class="btn primary" id="saveRule" type="button">Save rule</button></div></div>' +
+      '<div class="card"><div class="card-h"><h2>Who gets notified</h2><span class="badge">' + approvers().length + " people</span></div>" +
+        '<div class="list">' + who + "</div>" +
+        '<div class="card-b" style="border-top:1px solid var(--line)"><div class="small faint">Example alert · <span id="chText">' + channels() + '</span></div>' +
+        '<div class="alert warn mt" style="margin-bottom:0"><b>Approval needed</b><br>' + sample + '<br><span class="small">Above the ' + CX.inr(SA.POLICY.poThreshold) + " limit — open Cyrix to approve or reject.</span></div>" +
+        '<p class="small faint" style="margin:10px 0 0">Give another admin this power on their <a href="admins.html">admin account</a> (“Approve high-value POs”).</p></div></div></div>';
+  }
+
+  SAM.render({
+    kind: "po", only: function (r) { return r.high; }, title: "High-value POs",
+    sub: "Purchase orders above the approval limit. They can't be issued until an admin approves them — admins are notified the moment one arrives.",
+    statuses: ["Awaiting admin approval", "Issued", "In transit", "Delivered", "On hold", "Rejected", "Cancelled"],
+    tone: { "Awaiting admin approval": "warn", Issued: "info", "In transit": "info", Delivered: "good", "On hold": "bad", Rejected: "bad", Cancelled: "bad" },
+    rank: function (r) { return r.status === "Awaiting admin approval" ? 2 : 0; },
+    before: before,
+    cols: [
+      { label: "PO", fmt: function (r) { return '<span class="mono">' + r.id + "</span>"; } },
+      { label: "Item", fmt: function (r) { return r.item + ' <span class="faint">× ' + r.qty + "</span>"; } },
+      { label: "Vendor", fmt: function (r) { return r.vendor; } },
+      { label: "Value", num: true, fmt: function (r, m) { return "<b>" + m(r.value) + "</b>"; } },
+      { label: "Zone", fmt: function (r) { return r.zone; } },
+      { label: "Admin decision", fmt: function (r) {
+        return r.status === "Awaiting admin approval" ? '<span style="' + (r.age > 1 ? "color:var(--danger);font-weight:600" : "") + '">waiting ' + (r.age ? r.age + " d" : "today") + "</span>"
+          : r.status === "Rejected" ? "Rejected by admin" : r.approvedBy ? "Approved by " + r.approvedBy : "—"; } }
+    ],
+    kpis: function (rows) {
+      var w = rows.filter(function (r) { return r.status === "Awaiting admin approval"; });
+      var oldest = w.reduce(function (a, r) { return Math.max(a, r.age); }, 0);
+      return [["Awaiting admin approval", w.length, "notified to " + approvers().length + " approvers", "pending_actions"], ["Value awaiting", CX.inr(w.reduce(function (a, r) { return a + r.value; }, 0)), "blocked until approved", "payments"],
+        ["Approved by admins", rows.filter(function (r) { return r.approvedBy; }).length, "issued after approval", "verified"], ["Oldest waiting", oldest ? oldest + " d" : "—", w.length ? "needs attention first" : "all clear", "hourglass_top"]];
+    },
+    actions: function (r) { return r.status === "Awaiting admin approval" ? SAM.hvActions() : []; },
+    bind: function (draw) {
+      document.getElementById("saveRule").addEventListener("click", function () {
+        var v = Math.max(0, +document.getElementById("limit").value || 0);
+        document.querySelectorAll("[data-ch]").forEach(function (c) { SA.POLICY.notify[c.getAttribute("data-ch")] = c.checked; });
+        document.getElementById("chText").textContent = channels();
+        SA.applyThreshold(v); SA.log("action", "PO approval rule", "Admin approval required above " + CX.inr(v));
+        CX.toast("Rule saved: POs above " + CX.inr(v) + " need admin approval (demo)"); draw();
+      });
+    }
+  });
+</script>
+</body>
+</html>

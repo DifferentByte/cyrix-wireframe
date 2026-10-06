@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Technical Verification</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Requisition · Handbook §4</div>
+      <h1>Technical verification</h1>
+      <p class="sub">Every PI is verified here before it goes to ITR/IPT or a purchase request. Confirm the need, check for existing or equivalent items, and approve the quantity.</p>
+    </div>
+    <div class="actions">
+      <div class="seg"><button class="on">Pending (7)</button><button>Approved</button><button>Rejected</button></div>
+    </div>
+  </div>
+
+  <div class="split-l">
+    <div class="card">
+      <div class="card-h"><input placeholder="Filter by barcode, item, engineer…"></div>
+      <div class="list">
+        <div class="it on"><div class="grow"><div class="t1">O₂ sensor cell · SV300</div><div class="t2">PI-KL-5521 · CYX-KL-004512 · Arun M.</div></div><span class="badge warn">6 h</span></div>
+        <div class="it"><div class="grow"><div class="t1">Infusion pump battery ×2</div><div class="t2">PI-TN-3310 · CYX-TN-011207 · Karthik R.</div></div><span class="badge">3 h</span></div>
+        <div class="it"><div class="grow"><div class="t1">X-ray tube housing seal</div><div class="t2">PI-OD-1182 · CYX-OD-000871 · New item?</div></div><span class="badge ai">New</span></div>
+        <div class="it"><div class="grow"><div class="t1">NIBP cuff adult ×10</div><div class="t2">PI-KL-5530 · Standby · Sreeja V.</div></div><span class="badge">2 h</span></div>
+        <div class="it"><div class="grow"><div class="t1">Defib paddle cable</div><div class="t2">PI-TN-3318 · CYX-TN-009934 · Offline</div></div><span class="badge bad">52 h</span></div>
+        <div class="it"><div class="grow"><div class="t1">Suction pump filter ×6</div><div class="t2">PI-KL-5534 · CYX-KL-002211</div></div><span class="badge">1 h</span></div>
+        <div class="it"><div class="grow"><div class="t1">OT light bulb 24V 150W</div><div class="t2">PI-OD-1190 · CYX-OD-001455</div></div><span class="badge">40 m</span></div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h">
+          <div><h2>PI-KL-5521 · O₂ sensor cell for Mindray SV300</h2><div class="small muted">Current call · TKT-KL-2409-11873 · DH Ernakulam ICU-2 · requested by Arun Mathew</div></div>
+          <span class="badge info tag">Qty 1 · need by 4 Oct</span>
+        </div>
+        <div class="card-b">
+          <div class="grid g3">
+            <div><div class="img" data-part="sensor" style="background:linear-gradient(135deg,var(--surface-2),var(--accent-soft))"><span class="cap">Uploaded field image</span></div></div>
+            <div><div class="img" data-part="sensor"><span class="cap">Existing SAP image · SP-VEN-00231</span></div></div>
+            <div>
+              <dl class="kv">
+                <dt>Item code</dt><dd class="mono">SP-VEN-00231</dd>
+                <dt>Description</dt><dd>O₂ sensor cell, galvanic</dd>
+                <dt>Make / model</dt><dd>Mindray · 040-001829-00</dd>
+                <dt>Spec</dt><dd>0–100% O₂, 3-pin Molex, 18-month life</dd>
+                <dt>Parent</dt><dd>Mindray SV300 · SV3-21A09874</dd>
+                <dt>AI similarity</dt><dd><span class="badge ai">94%</span></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="tabs" data-tabs="h">
+          <button class="on" data-tab="pp">Previous purchases (3)</button>
+          <button data-tab="itr">Previous ITR / IPT (2)</button>
+          <button data-tab="eq">Compatible / equivalent (2)</button>
+        </div>
+        <div class="tab-panel on" data-panel="h:pp"><div class="table-wrap"><table class="t">
+          <thead><tr><th>PO</th><th>Date</th><th>Vendor</th><th class="num">Qty</th><th class="num">Rate</th><th>Tech approval</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">PO-26-2871</td><td>12 Jun 2026</td><td>MedServe Biomedical</td><td class="num">2</td><td class="num">₹18,400</td><td>R. Nair</td></tr>
+            <tr><td class="mono">PO-26-1904</td><td>03 Feb 2026</td><td>MedServe Biomedical</td><td class="num">1</td><td class="num">₹17,900</td><td>R. Nair</td></tr>
+            <tr><td class="mono">PO-25-4412</td><td>19 Sep 2025</td><td>Aarav Healthcare Spares</td><td class="num">3</td><td class="num">₹16,750</td><td>S. Iyer</td></tr>
+          </tbody></table></div></div>
+        <div class="tab-panel" data-panel="h:itr"><div class="table-wrap"><table class="t">
+          <thead><tr><th>ITR</th><th>Date</th><th>From → To</th><th class="num">Qty</th><th>Barcode</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">ITR-KL-8830</td><td>19 Aug 2026</td><td>Kochi WH → FE Arun M.</td><td class="num">1</td><td class="mono">CYX-KL-004512</td></tr>
+            <tr><td class="mono">ITR-KL-7702</td><td>02 Mar 2026</td><td>Kochi WH → FE Sreeja V.</td><td class="num">1</td><td class="mono">CYX-KL-004498</td></tr>
+          </tbody></table></div>
+          <div class="card-b"><div class="alert warn">The same barcode received this item 42 days ago (ITR-KL-8830). The expected cell life is 18 months, so check for installation damage or a calibration fault before approving.</div></div>
+        </div>
+        <div class="tab-panel" data-panel="h:eq"><div class="table-wrap"><table class="t">
+          <thead><tr><th>Item</th><th>Make</th><th>Relation</th><th class="num">Stock</th><th>Location</th></tr></thead>
+          <tbody>
+            <tr><td><span class="mono">SP-VEN-00232</span> O₂ cell MOX-2 type</td><td>City Technology</td><td><span class="badge info">Equivalent</span></td><td class="num">4</td><td>Chennai WH</td></tr>
+            <tr><td><span class="mono">SP-VEN-00231</span> O₂ cell (OEM)</td><td>Mindray</td><td><span class="badge good">Same item</span></td><td class="num">2</td><td>In transit → Kochi (PO-26-3312)</td></tr>
+          </tbody></table></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Verification checklist</h2><span class="sec-no">§4 · 6 checks</span></div>
+        <div class="card-b stack">
+          <div class="grid g2" style="gap:10px">
+            <label class="check"><input type="checkbox" checked> 1. The item is actually required</label>
+            <label class="check"><input type="checkbox" checked> 2. Checked whether the same item exists in the system</label>
+            <label class="check"><input type="checkbox"> 3. Checked for an equivalent or compatible item</label>
+            <label class="check"><input type="checkbox"> 4. Checked whether a previously purchased item can be used</label>
+            <label class="check"><input type="checkbox" checked> 5. Image and description match</label>
+            <label class="check"><input type="checkbox" checked> 6. Requested quantity is appropriate</label>
+          </div>
+          <div class="form f3">
+            <div class="field"><label>Approved quantity</label><input type="number" value="1"></div>
+            <div class="field"><label>Fulfil via</label>
+              <select id="route">
+                <option value="itr">ITR / IPT from stock (in-transit unit)</option>
+                <option value="eq">ITR – equivalent SP-VEN-00232 from Chennai</option>
+                <option value="pr">Purchase request</option>
+                <option value="new">New item creation</option>
+              </select>
+            </div>
+            <div class="field"><label>Technical remarks</label><input placeholder="Visible to coordinator & purchase"></div>
+          </div>
+        </div>
+        <div class="card-f">
+          <button class="btn danger" data-toast="PI-KL-5521 rejected. Engineer notified.">Reject</button>
+          <button class="btn" data-toast="Sent back to engineer for more information">Ask for info</button>
+          <button class="btn primary" id="approve">Approve & route</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+<script>
+document.getElementById("approve").addEventListener("click", function(){
+  var r = document.getElementById("route").value;
+  CX.toast({itr:"Approved: ITR raised against in-transit stock",eq:"Approved: ITR raised for equivalent item from Chennai WH",pr:"Approved: PR-26-1231 created and sent to Purchase",new:"Approved: New item request started"}[r]);
+  if (r==="new") setTimeout(function(){ location.href="new-item.html"; }, 900);
+});
+document.querySelectorAll(".list .it").forEach(function(it){ it.addEventListener("click", function(){
+  document.querySelectorAll(".list .it").forEach(function(x){ x.classList.toggle("on", x===it); });
+});});
+</script>
+</body>
+</html>

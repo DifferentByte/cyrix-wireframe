@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Role preview</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="alert warn" id="banner"></div>
+
+  <div class="page-head mt">
+    <div>
+      <div class="crumb" id="crumb"></div>
+      <h1 id="title"></h1>
+      <p class="sub" id="sub"></p>
+    </div>
+    <div class="actions"><a class="btn" id="editRole" href="roles.html"><span class="mi">tune</span>Edit this role</a>
+      <a class="btn primary" href="index.html">Exit preview</a></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>What this role can do here</h2></div>
+    <div class="table-wrap" id="acts"></div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>Not available to this role</h2></div>
+    <div class="card-b" id="hidden"></div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var r = SA.role(SA.param("role")) || SA.ROLES[0], $ = function (id) { return document.getElementById(id); };
+  var cur = SA.mod(SA.param("m")) || SA.sortMods(Object.keys(r.perms))[0];
+  $("banner").innerHTML = "<b>Preview mode.</b> You are seeing the app as someone with the <b>" + r.name + "</b> role (" + SA.zoneText(r.zones) + "). Nothing here is live.";
+  $("editRole").href = "role-edit.html?role=" + r.id;
+  $("crumb").textContent = "Overview";
+  if (cur) {
+    $("title").textContent = cur.label;
+    $("sub").textContent = "In the real app this is the " + cur.label + " screen. Below is what " + r.name + " can do on it.";
+    var allowed = r.perms[cur.id] || [];
+    $("acts").innerHTML = '<table class="t"><thead><tr><th>Action</th><th>Allowed</th></tr></thead><tbody>' + cur.acts.map(function (a) {
+      var ok = allowed.indexOf(a) >= 0;
+      return "<tr><td>" + SA.ACTS.filter(function (x) { return x.id === a; })[0].label + "</td><td>" +
+        (ok ? '<span class="badge good">Yes</span>' : '<span class="badge bad">No</span>') + "</td></tr>";
+    }).join("") + "</tbody></table>";
+  } else {
+    $("title").textContent = "Nothing to show"; $("sub").textContent = "This role has no modules.";
+  }
+  var hid = SA.MODS.filter(function (m) { return !r.perms[m.id]; });
+  $("hidden").innerHTML = hid.length ? hid.map(function (m) { return '<span class="badge bad"><span class="mi" style="font-size:14px">' + m.icon + "</span>" + m.label + "</span>"; }).join(" ")
+    : "<span class='muted'>This role can see every module.</span>";
+</script>
+</body>
+</html>

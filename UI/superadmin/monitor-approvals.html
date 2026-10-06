@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Approval</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content" id="app"></main>
+
+<script src="../assets/cyrix-range.js"></script>
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script src="sa-monitor.js"></script>
+<script>
+  SAM.render({
+    dates: true, kind: "approvals", title: "Approval", sub: "Items waiting for approval across every team. As Super Admin you can approve or reject any of them, or move them to another approver.",
+    statuses: ["Pending", "Approved", "Rejected"], tone: { Pending: "warn", Approved: "good", Rejected: "bad" },
+    rank: function (r) { return r.status === "Pending" ? 1 : 0; },
+    cols: [
+      { label: "Approval", fmt: function (r) { return '<span class="mono">' + r.id + "</span>"; } },
+      { label: "PI", fmt: function (r) { return '<span class="mono">' + r.pi + "</span>"; } },
+      { label: "Item", fmt: function (r) { return r.item + ' <span class="faint">× ' + r.qty + "</span>"; } },
+      { label: "Zone", fmt: function (r) { return r.zone; } },
+      { label: "Value", num: true, fmt: function (r, m) { return m(r.value); } },
+      { label: "Waiting", num: true, fmt: function (r) { return '<span style="' + (r.status === "Pending" && r.age > 3 ? "color:var(--danger);font-weight:600" : "") + '">' + (r.age ? r.age + " d" : "today") + "</span>"; } }
+    ],
+    kpis: function (rows) {
+      var p = rows.filter(function (r) { return r.status === "Pending"; });
+      return [["Pending approval", p.length, "across all teams", "pending_actions"], ["Overdue", p.filter(function (r) { return r.age > 3; }).length, "waiting more than 3 days", "warning"],
+        ["Value awaiting", CX.inr(p.reduce(function (a, r) { return a + r.value; }, 0)), "pending items", "payments"], ["Approved", rows.filter(function (r) { return r.status === "Approved"; }).length, "this cycle", "task_alt"]];
+    },
+    actions: function (r) {
+      if (r.status !== "Pending") return [];
+      return [
+        { id: "approve", label: "Approve", cls: "good", run: function (r) { r.status = "Approved"; return "Approved " + r.id + " (Super Admin override)"; } },
+        { id: "reject", label: "Reject", cls: "danger", run: function (r) { r.status = "Rejected"; return "Rejected " + r.id + " (Super Admin override)"; } },
+        { id: "reassign", label: "Reassign" }
+      ];
+    }
+  });
+</script>
+</body>
+</html>

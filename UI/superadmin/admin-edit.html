@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin account</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb"><a href="admins.html">Admin accounts</a> · <span id="crumb">New</span></div>
+      <h1 id="title">Create admin account</h1>
+      <p class="sub">Pick an admin type as a starting point, then switch individual powers on or off. The admin gets an invite email to set a password.</p>
+    </div>
+    <div class="actions">
+      <a class="btn" href="admins.html">Cancel</a>
+      <button class="btn primary" id="save" type="button"><span class="mi">save</span>Save admin</button>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Details</h2></div>
+        <div class="card-b">
+          <div class="form">
+            <div class="field"><label>Full name <span class="req">*</span></label><input id="name" placeholder="e.g. Sunita Kapoor"></div>
+            <div class="field"><label>Work email <span class="req">*</span></label><input id="email" placeholder="name@cyrix.in"></div>
+            <div class="field"><label>Phone</label><input id="phone" placeholder="+91 …"></div>
+            <div class="field"><label>Status</label><select id="status"><option value="active">Active</option><option value="invited">Invited (hasn't signed in)</option><option value="inactive">Inactive (cannot sign in)</option></select></div>
+            <div class="field full"><label>Admin type</label><select id="preset"></select><div class="hint" id="presetDesc"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Access control powers</h2><span class="badge" id="accBadge"></span></div>
+        <div class="table-wrap"><table class="t" data-nopage><tbody id="access"></tbody></table></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Monitor & act powers</h2><span class="badge" id="monBadge"></span></div>
+        <div class="card-b small muted" style="padding-bottom:0">“View” lets the admin watch the screen. “View & act” also lets them approve, reject, reassign, cancel or pause — the same actions you have.</div>
+        <div class="table-wrap"><table class="t" data-nopage><tbody id="monitor"></tbody></table></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Teams covered</h2></div>
+        <div class="card-b">
+          <div class="seg" id="scope"><button data-val="all">All teams</button><button data-val="some">Selected teams only</button></div>
+          <div class="zones mt-s" id="teams"></div>
+          <div class="hint small faint" style="margin-top:8px">Limits which employees, PIs and conversations this admin can see and act on.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Security</h2></div>
+        <div class="card-b stack" style="gap:12px">
+          <label class="check"><input type="checkbox" id="mfa" checked> Require 2-step login (recommended)</label>
+          <label class="check"><input type="checkbox" checked> Send invite email on save</label>
+          <div class="field" style="max-width:260px"><label>Sign out after</label><select><option>30 minutes idle</option><option selected>2 hours idle</option><option>8 hours idle</option></select></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Sidebar this admin will see</h2></div>
+        <div class="card-b"><div id="prev"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>Admins can never</h2></div>
+        <div class="card-b">
+          <ul class="checks">
+            <li class="bad"><span class="ic">✕</span>Create, edit or remove admin accounts</li>
+            <li class="bad"><span class="ic">✕</span>Change the Super Admin's settings</li>
+            <li class="bad"><span class="ic">✕</span>Edit or delete audit log entries</li>
+            <li class="ok"><span class="ic">✓</span>Every action they take is logged under their own name</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card" id="dangerCard" style="display:none">
+        <div class="card-h"><h2>Account</h2></div>
+        <div class="card-b stack" style="gap:10px">
+          <button class="btn sm" data-toast="Password reset link sent (demo)" type="button">Send password reset</button>
+          <button class="btn sm danger" data-toast="Admin account removed (demo — nothing stored)" type="button">Remove admin account</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var C = SA.ADMIN_CAPS, P = SA.ADMIN_PRESETS, adm = SA.ADMINS.filter(function (a) { return a.id === SA.param("id"); })[0];
+  var st = { preset: "access", access: {}, monitor: {}, teams: "all" };
+
+  $("preset").innerHTML = P.map(function (p) { return '<option value="' + p.id + '">' + p.name + "</option>"; }).join("") + '<option value="custom">Custom</option>';
+  $("teams").innerHTML = SA.TEAMS.map(function (t) { return '<label><input type="checkbox" value="' + t.id + '"> ' + t.name + "</label>"; }).join("");
+
+  function applyPreset(id) {
+    var p = P.filter(function (x) { return x.id === id; })[0]; if (!p) return;
+    st.access = {}; st.monitor = {};
+    C.access.forEach(function (c) { st.access[c.id] = p.access.indexOf(c.id) >= 0; });
+    C.monitor.forEach(function (c) { st.monitor[c.id] = p.monitor[c.id] || "none"; });
+  }
+  function seg(id, val, acts) {
+    var opts = [["none", "None"], ["view", "View"]].concat(acts ? [["act", "View & act"]] : []);
+    return '<div class="seg" data-mon="' + id + '">' + opts.map(function (o) { return '<button data-val="' + o[0] + '"' + (o[0] === val ? ' class="on"' : "") + ' type="button">' + o[1] + "</button>"; }).join("") + "</div>";
+  }
+
+  function draw() {
+    $("access").innerHTML = C.access.map(function (c) {
+      return '<tr><td><div class="mod"><span class="mi" style="color:var(--accent)">' + c.icon + '</span><div><b style="font-weight:500">' + c.label + '</b><div class="small faint">' + c.desc + '</div></div></div></td>' +
+        '<td style="text-align:right"><label class="sw"><input type="checkbox" data-acc="' + c.id + '"' + (st.access[c.id] ? " checked" : "") + "><i></i></label></td></tr>";
+    }).join("");
+    $("monitor").innerHTML = C.monitor.map(function (c) {
+      return '<tr><td><div class="mod"><span class="mi" style="color:var(--accent)">' + c.icon + "</span>" + c.label + '</div></td><td style="text-align:right">' + seg(c.id, st.monitor[c.id], c.acts) + "</td></tr>";
+    }).join("");
+    var na = C.access.filter(function (c) { return st.access[c.id]; }).length, nm = C.monitor.filter(function (c) { return st.monitor[c.id] !== "none"; }).length;
+    $("accBadge").textContent = na + " of " + C.access.length + " on"; $("monBadge").textContent = nm + " of " + C.monitor.length + " visible";
+    $("preset").value = st.preset; var p = P.filter(function (x) { return x.id === st.preset; })[0];
+    $("presetDesc").textContent = p ? p.desc : "Custom mix of powers.";
+    $("scope").querySelectorAll("button").forEach(function (b) { b.classList.toggle("on", (b.getAttribute("data-val") === "all") === (st.teams === "all")); });
+    $("teams").style.display = st.teams === "all" ? "none" : "";
+    document.querySelectorAll("#teams input").forEach(function (c) { c.checked = st.teams !== "all" && st.teams.indexOf(c.value) >= 0; });
+
+    // sidebar preview: Home is always there; the rest follows the powers above
+    var on = function (id) { return st.access[id]; };
+    var grp = function (title, rows) { return rows.length ? '<div class="nav-group"><div>' + title + "</div>" + rows.map(function (r, i) { return '<span class="nav-link' + (r.first ? " active" : "") + '"><span class="mi">' + r.i + "</span>" + r.l + "</span>"; }).join("") + "</div>" : ""; };
+    var html = grp("Overview", [{ i: "dashboard", l: "Super Admin Home", first: true }]) +
+      grp("Access control", [on("emp") && { i: "groups", l: "Employees" }, on("roles") && { i: "badge", l: "Roles" }, on("roles") && { i: "grid_view", l: "Access overview" }, on("audit") && { i: "history", l: "Audit log" }].filter(Boolean)) +
+      grp("Catalog", on("items") ? [{ i: "add_box", l: "Items" }] : []) +
+      grp("Teams & workload", on("teams") ? [{ i: "diversity_3", l: "Teams" }, { i: "assignment_ind", l: "PI workload" }] : []) +
+      grp("Monitor & act", C.monitor.filter(function (c) { return st.monitor[c.id] !== "none"; }).map(function (c) { return { i: c.icon, l: c.label.replace(" (bot control)", "") + (st.monitor[c.id] === "view" ? " · view" : "") }; })
+        .concat(on("po") ? [{ i: "verified", l: "High-value POs" }] : []));
+    $("prev").innerHTML = '<div class="sa-prev">' + html + "</div>";
+  }
+
+  $("access").addEventListener("change", function (e) { st.access[e.target.getAttribute("data-acc")] = e.target.checked; st.preset = "custom"; draw(); });
+  $("monitor").addEventListener("segchange", function (e) { st.monitor[e.target.getAttribute("data-mon")] = e.detail; st.preset = "custom"; draw(); });
+  $("preset").addEventListener("change", function () { st.preset = $("preset").value; if (st.preset !== "custom") applyPreset(st.preset); draw(); });
+  $("scope").addEventListener("segchange", function (e) { st.teams = e.detail === "all" ? "all" : (st.teams === "all" ? ["purchase"] : st.teams); draw(); });
+  $("teams").addEventListener("change", function () { st.teams = [].map.call(document.querySelectorAll("#teams input:checked"), function (c) { return c.value; }); draw(); });
+  $("save").addEventListener("click", function () {
+    if (!$("name").value || !$("email").value) { CX.toast("Name and email are required"); return; }
+    SA.log("admin", $("name").value, (adm ? "Admin account updated" : "Admin account created") + " (" + ($("preset").options[$("preset").selectedIndex].text) + ")");
+    CX.toast((adm ? "Admin saved" : "Invite sent to " + $("email").value) + " (demo — nothing stored)");
+  });
+
+  if (adm && adm.locked) { window.location.replace("admins.html"); }
+  if (adm) {
+    $("title").textContent = "Edit " + adm.name; $("crumb").textContent = adm.name; $("dangerCard").style.display = "";
+    $("name").value = adm.name; $("email").value = adm.email; $("phone").value = adm.phone; $("status").value = adm.status; $("mfa").checked = adm.mfa;
+    st.preset = adm.preset; st.teams = adm.teams === "all" ? "all" : adm.teams.slice();
+  }
+  applyPreset(st.preset === "custom" ? "access" : st.preset);
+  draw();
+</script>
+</body>
+</html>

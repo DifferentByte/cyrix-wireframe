@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Advance & Payments</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Orders · Handbook §14</div>
+      <h1>Advance & payment processing</h1>
+      <p class="sub">After a PO is issued, AOS checks the payment terms and raises the right SAP document: an AP down payment request for items, or an AP down payment invoice for services. Payment status and UTR sync back from SAP.</p>
+    </div>
+  </div>
+
+  <div class="grid g4">
+    <div class="card kpi"><div class="l">Advances to raise</div><div class="v">4</div></div>
+    <div class="card kpi"><div class="l">Awaiting Finance</div><div class="v">7</div><div class="d muted">₹9.2 L</div></div>
+    <div class="card kpi"><div class="l">Paid · UTR received (7 d)</div><div class="v">15</div></div>
+    <div class="card kpi"><div class="l">UTR sync</div><div class="v" style="font-size:16px"><span class="badge good"><span class="d"></span>Live · 2 min ago</span></div></div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>Payment requests</h2>
+      <div class="tag seg"><button class="on">All</button><button>Items</button><button>Services</button></div>
+    </div>
+    <div class="table-wrap"><table class="t">
+      <thead><tr><th>PO</th><th>Vendor</th><th>Type</th><th>SAP document</th><th>Terms</th><th class="num">Amount</th><th>Status</th><th>UTR</th><th></th></tr></thead>
+      <tbody>
+        <tr><td class="mono">PO-26-3338</td><td>BioSense Instruments</td><td>Item</td><td>AP Down Payment Request</td><td>100% adv.</td><td class="num">₹56,280</td><td><span class="badge warn">To raise</span></td><td>—</td><td><button class="btn sm primary" data-toast="AP Down Payment Request DPR-26-0412 created in SAP">Raise in SAP</button></td></tr>
+        <tr><td class="mono">PO-26-3335</td><td>Siemens Healthineers</td><td>Service · CMC</td><td>AP Down Payment Invoice</td><td>40% adv.</td><td class="num">₹4,72,000</td><td><span class="badge warn">To raise</span></td><td>—</td><td><button class="btn sm primary" data-toast="AP Down Payment Invoice DPI-26-0118 created in SAP">Raise in SAP</button></td></tr>
+        <tr><td class="mono">PO-26-3321</td><td>Delta Surgicals</td><td>Item</td><td>DPR-26-0409</td><td>30% adv.</td><td class="num">₹21,600</td><td><span class="badge info">With Finance</span></td><td>—</td><td></td></tr>
+        <tr><td class="mono">PO-26-3312</td><td>MedServe Biomedical</td><td>Item</td><td>DPR-26-0404</td><td>50% adv.</td><td class="num">₹42,500</td><td><span class="badge good">Paid 28 Sep</span></td><td class="mono small">HDFCR52024092811843</td><td></td></tr>
+        <tr><td class="mono">PO-26-3270</td><td>Siemens Healthineers</td><td>Service · CMC</td><td>DPI-26-0112</td><td>40% adv.</td><td class="num">₹4,72,000</td><td><span class="badge good">Paid 26 Sep</span></td><td class="mono small">SBIN224092605527</td><td></td></tr>
+        <tr><td class="mono">PO-26-3298</td><td>Kovai Medical Tech</td><td>Item</td><td>AP Invoice 88123</td><td>15 d credit</td><td class="num">₹1,18,000</td><td><span class="badge good">Paid 27 Sep</span></td><td class="mono small">ICICN24092703391</td><td></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="grid g2 mt">
+    <div class="card">
+      <div class="card-h"><h3>Sync path</h3></div>
+      <div class="card-b">
+        <div class="flow"><span class="s done">SAP</span><span class="a">→</span><span class="s done">Payment status</span><span class="a">→</span><span class="s done">UTR</span><span class="a">→</span><span class="s done">AOS / AI system</span><span class="a">→</span><span class="s now">Field / service software</span></div>
+        <p class="small muted mt">Fields returned: payment status, payment date, amount, UTR number, vendor and PO reference. The same data is shared with the field and service team software.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>PO-26-3312 · payment detail</h3></div>
+      <div class="card-b"><dl class="kv">
+        <dt>Status</dt><dd><span class="badge good">Paid</span></dd>
+        <dt>Payment date</dt><dd>28 Sep 2026</dd>
+        <dt>Amount</dt><dd>₹42,500</dd>
+        <dt>UTR</dt><dd class="mono">HDFCR52024092811843</dd>
+        <dt>Vendor</dt><dd>MedServe Biomedical</dd>
+        <dt>Follow-up</dt><dd>Auto reminder scheduled for 30 Sep (day 2)</dd>
+      </dl></div>
+    </div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

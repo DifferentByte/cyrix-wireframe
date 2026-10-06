@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Sourcing · Messages</div>
+      <h1>Vendor messages</h1>
+      <p class="sub">Look up a Purchase Indent, Purchase Request or PO to see what the automation bot has sent to vendors for it, and where its follow-ups stand.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-b">
+      <div class="form">
+        <div class="field">
+          <label for="searchType">Search by</label>
+          <select id="searchType">
+            <option value="pi">PI ID</option>
+            <option value="pr">PR ID</option>
+            <option value="po">PO number</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="piPick" id="piPickLabel">PI ID</label>
+          <input type="text" id="piPick" list="piIdList" placeholder="Type a PI ID, e.g. 13126072-900071" autocomplete="off">
+          <datalist id="piIdList"></datalist>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="piCard" class="card mt" style="display:none">
+    <div class="card-h"><h2 id="piTitle">Detail</h2><span class="badge info" id="piStatusBadge"></span></div>
+    <div class="card-b">
+      <dl class="kv" id="piFields"></dl>
+    </div>
+  </div>
+
+  <div id="threadCard" class="card mt" style="display:none">
+    <div class="card-h"><h2>Automated vendor messages</h2><span class="badge ai">Cyrix Bot</span></div>
+    <div class="card-b">
+      <div class="alert info">Nobody on the team writes to vendors by hand. The Cyrix bot sends the quotation request, chases the vendor with automatic follow-ups (24 h, 48 h and 72 h), reads the reply and records the quote. If there is still no answer after the third follow-up, it flags the PI owner. This thread is a representative preview built from the real PI and vendor data.</div>
+      <ul class="tl mt" id="thread"></ul>
+    </div>
+  </div>
+
+  <div id="emptyState" class="card mt">
+    <div class="card-b muted" id="emptyStateText">Pick a PI ID above to see its vendor message history.</div>
+  </div>
+
+</main>
+
+<script src="assets/mock-data.js"></script>
+<script>
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+    );
+  }
+
+  function seedFrom(str) {
+    let h = 0;
+    for (let i = 0; i < String(str).length; i++) h = (h * 31 + String(str).charCodeAt(i)) >>> 0;
+    return h;
+  }
+
+  // SAP doesn't store a PR entity of its own — a PR number only shows up
+  // embedded in a PO's free-text Comments ("Based On Purchase Request
+  // 100002."), same regex purchase-orders.html uses to show it as "PI
+  // number" there.
+  function prNumberOf(po) {
+    const m = (po.comments || "").match(/Purchase Request (\d+)/i);
+    return m ? m[1] : null;
+  }
+
+  let piIndex = new Map();
+  let poIndex = new Map();
+  let prIndex = new Map();
+
+  function loadIndices() {
+    const calls = (window.CX_MOCK && window.CX_MOCK.calls) || [];
+    const byId = new Map();
+    for (const r of calls) {
+      if (r.id && !byId.has(r.id)) byId.set(r.id, r);
+    }
+    piIndex = new Map([...byId.values()].map((r) => [r.id.toLowerCase(), r]));
+
+    const pos = (window.CX_MOCK && window.CX_MOCK.purchaseOrders) || [];
+    poIndex = new Map(pos.map((p) => [String(p.docNum), p]));
+    prIndex = new Map();
+    for (const p of pos) {
+      const pr = prNumberOf(p);
+      if (pr && !prIndex.has(pr)) prIndex.set(pr, p);
+    }
+  }
+
+  const TYPE_META = {
+    pi: { label: "PI ID", placeholder: "Type a PI ID, e.g. 13126072-900071", emptyHint: "Pick a PI ID above to see its vendor message history." },
+    pr: { label: "PR ID", placeholder: "Type a PR number, e.g. 100002", emptyHint: "Pick a PR ID above to see its vendor message history." },
+    po: { label: "PO number", placeholder: "Type a PO number, e.g. 100004", emptyHint: "Pick a PO number above to see its vendor message history." },
+  };
+
+  function populateDatalist() {
+    const type = document.getElementById("searchType").value;
+    const meta = TYPE_META[type];
+    document.getElementById("piPickLabel").textContent = meta.label;
+    document.getElementById("piPick").placeholder = meta.placeholder;
+    document.getElementById("emptyStateText").textContent = meta.emptyHint;
+
+    const datalist = document.getElementById("piIdList");
+    if (type === "pi") {
+      datalist.innerHTML = [...piIndex.values()]
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map((r) => `<option value="${esc(r.id)}">${esc(r.desc || "")}</option>`)
+        .join("");
+    } else if (type === "po") {
+      datalist.innerHTML = [...poIndex.values()]
+        .sort((a, b) => Number(a.docNum) - Number(b.docNum))
+        .map((p) => `<option value="${esc(p.docNum)}">${esc(p.vendorName || "")}</option>`)
+        .join("");
+    } else {
+      datalist.innerHTML = [...prIndex.entries()]
+        .sort((a, b) => Number(a[0]) - Number(b[0]))
+        .map(([pr, p]) => `<option value="${esc(pr)}">${esc(p.vendorName || "")}</option>`)
+        .join("");
+    }
+  }
+
+  // A vendor name to address the simulated thread to — reuse a real one
+  // from SAP's purchase history when this PI's own data suggests an item
+  // code we have vendor history for; otherwise a generic stand-in. Only
+  // needed for the PI path: PO/PR lookups already carry a real vendor.
+  function vendorNameFor(pi) {
+    const vh = (window.CX_MOCK && window.CX_MOCK.vendorHistory) || {};
+    const codes = Object.keys(vh);
+    if (codes.length === 0) return "the sourced vendor";
+    const code = codes[seedFrom(pi.id) % codes.length];
+    const rows = vh[code];
+    return (rows && rows[0] && rows[0].vendor_name) || "the sourced vendor";
+  }
+
+  // The thread is written entirely by the automation bot — nobody on the team messages vendors by hand.
+  // Follow-ups go out on a 24 h / 48 h / 72 h cadence until the vendor replies; after the third one with
+  // no answer the owner is flagged.
+  function addDays(dateStr, n) {
+    const s = String(dateStr || "");
+    let m = s.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/), d;
+    if (m) d = new Date(+m[3], +m[2] - 1, +m[1]);
+    else if ((m = s.match(/(\d{4})-(\d{2})-(\d{2})/))) d = new Date(+m[1], +m[2] - 1, +m[3]);
+    else d = new Date();
+    d.setDate(d.getDate() + n);
+    return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  }
+
+  // Normalises a PI, or a PO reached via PO/PR search, into the common
+  // shape renderThread()/buildThread() work with.
+  function subjectFromPI(pi) {
+    return {
+      seedKey: "pi:" + pi.id,
+      title: pi.id + " — " + (pi.desc || ""),
+      statusBadge: pi.status || "—",
+      fields: [
+        ["State", pi.state || "—"],
+        ["Requestor", pi.requestor || "—"],
+        ["Date", pi.date || "—"],
+        ["Vendor", vendorNameFor(pi)],
+      ],
+      vendor: vendorNameFor(pi),
+      desc: pi.desc || pi.id,
+      date: pi.date,
+    };
+  }
+  function subjectFromPO(po) {
+    const pr = prNumberOf(po);
+    return {
+      seedKey: "po:" + po.docNum,
+      title: "PO " + po.docNum + " — " + (po.vendorName || ""),
+      statusBadge: po.status || "—",
+      fields: [
+        ["PO number", po.docNum],
+        ["PR number", pr || "—"],
+        ["Date", po.docDate || "—"],
+        ["Total", po.total != null ? "₹" + Number(po.total).toLocaleString("en-IN") : "—"],
+        ["Vendor", po.vendorName || "—"],
+      ],
+      vendor: po.vendorName || "the sourced vendor",
+      desc: "PO " + po.docNum,
+      date: po.docDate,
+    };
+  }
+
+  function buildThread(subject) {
+    const seed = seedFrom(subject.seedKey);
+    const vendor = subject.vendor;
+    const day = (n) => addDays(subject.date || "01-10-2026", n);
+    const BOT = "Cyrix Bot";
+    const events = [{ who: BOT, when: day(0), text: `Sent a quotation request to ${vendor} (email + WhatsApp) for "${subject.desc}".`, cls: "" }];
+    // how many days until the vendor replies; 0 = never replies
+    const replyAfter = [1, 2, 3, 4, 0][seed % 5];
+    const followUps = replyAfter === 0 ? 3 : Math.max(0, replyAfter - 1);
+    for (let i = 1; i <= Math.min(followUps, 3); i++) {
+      events.push({ who: BOT, when: day(i), text: `Automatic follow-up #${i}: reminded ${vendor} that the quotation is still pending.`, cls: "" });
+    }
+    let bot;
+    if (replyAfter === 0) {
+      events.push({ who: BOT, when: day(4), text: "No reply after 3 follow-ups — flagged to the PI owner and Super Admin for a manual call.", cls: "now" });
+      bot = "No reply · escalated to owner";
+    } else {
+      const rate = 500 + (seed % 9500);
+      events.push({ who: vendor, when: day(replyAfter), text: "Replied with a quotation.", cls: "done" });
+      events.push({ who: BOT, when: day(replyAfter), text: `Read the reply and recorded ₹${rate.toLocaleString("en-IN")} per unit (valid 30 days).`, cls: "done" });
+      bot = "Replied · quote recorded";
+    }
+    events.bot = bot;
+    return events;
+  }
+
+  function renderThread(subject) {
+    document.getElementById("piTitle").textContent = subject.title;
+    document.getElementById("piStatusBadge").textContent = subject.statusBadge;
+    document.getElementById("piFields").innerHTML = subject.fields
+      .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`)
+      .join("");
+
+    const events = buildThread(subject);
+    document.getElementById("piFields").insertAdjacentHTML("beforeend", `<dt>Bot status</dt><dd>${esc(events.bot)}</dd>`);
+    document.getElementById("thread").innerHTML = events
+      .map((e, idx) => `<li class="${e.cls || (idx === events.length - 1 ? "now" : "done")}"><b>${esc(e.who)}</b> <span class="small faint">${esc(e.when)}</span><div>${esc(e.text)}</div></li>`)
+      .join("");
+
+    document.getElementById("piCard").style.display = "block";
+    document.getElementById("threadCard").style.display = "block";
+    document.getElementById("emptyState").style.display = "none";
+  }
+
+  function showEmpty() {
+    document.getElementById("piCard").style.display = "none";
+    document.getElementById("threadCard").style.display = "none";
+    document.getElementById("emptyState").style.display = "block";
+  }
+
+  document.getElementById("piPick").addEventListener("input", (e) => {
+    const type = document.getElementById("searchType").value;
+    const raw = e.target.value.trim();
+    if (!raw) { showEmpty(); return; }
+    let subject = null;
+    if (type === "pi") {
+      const pi = piIndex.get(raw.toLowerCase());
+      if (pi) subject = subjectFromPI(pi);
+    } else if (type === "po") {
+      const po = poIndex.get(raw);
+      if (po) subject = subjectFromPO(po);
+    } else {
+      const po = prIndex.get(raw);
+      if (po) subject = subjectFromPO(po);
+    }
+    if (subject) renderThread(subject); else showEmpty();
+  });
+  document.getElementById("searchType").addEventListener("change", () => {
+    document.getElementById("piPick").value = "";
+    populateDatalist();
+    showEmpty();
+  });
+
+  loadIndices();
+  populateDatalist();
+</script>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

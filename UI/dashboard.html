@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Overview</div>
+      <h1>Dashboard</h1>
+      <p class="sub" id="subtitle">Live purchase-indent data pooled from every state portal (UP, Kerala, AP, Rajasthan).</p>
+    </div>
+    <div class="actions">
+      <div id="range"></div>
+      <button class="btn" id="refresh" type="button"><span class="mi">refresh</span>Refresh</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-b"><div class="pool-strip" id="poolStrip"><span class="label">Background pool</span></div></div>
+  </div>
+
+  <div id="status" class="card mt"><div class="card-b muted">Loading…</div></div>
+
+  <div id="content" style="display:none">
+    <div class="grid g4 mt">
+      <div class="card kpi"><div class="l">Total records</div><div class="v" id="kTotal">—</div></div>
+      <div class="card kpi"><div class="l">Online indents</div><div class="v" id="kOnline">—</div></div>
+      <div class="card kpi"><div class="l">Offline / support</div><div class="v" id="kOffline">—</div></div>
+      <div class="card kpi"><div class="l">Approved</div><div class="v" id="kApproved">—</div></div>
+    </div>
+
+    <div class="grid g2 mt">
+      <div class="card">
+        <div class="card-h"><h2>By state</h2></div>
+        <div class="card-b" id="stateBars"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>By status</h2></div>
+        <div class="table-wrap">
+          <table class="t">
+            <thead><tr><th>Status</th><th class="num">Count</th></tr></thead>
+            <tbody id="statusRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt">
+      <div class="card-b stack">
+        <div class="row wrap">
+          <input type="search" id="q" placeholder="Search description, requestor, indent, status…" style="flex:1 1 260px">
+          <select id="fState" style="width:auto"><option value="">All states</option></select>
+          <select id="fType" style="width:auto">
+            <option value="">All call types</option>
+            <option value="current_call">Online (current calls)</option>
+            <option value="support_call">Offline (support calls)</option>
+          </select>
+        </div>
+        <p class="small faint" id="rowcount"></p>
+        <div class="table-wrap">
+          <table class="t">
+            <thead>
+              <tr>
+                <th>State</th><th>Type</th><th>Indent / Ticket</th><th>Description</th>
+                <th>Requestor</th><th>Status</th><th>Date</th><th>Images</th>
+              </tr>
+            </thead>
+            <tbody id="recordRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="small faint mt">Stored snapshot of real Cyrix data, captured once rather than re-querying live.</p>
+
+  <div class="modal-bg" id="galleryModal">
+    <div class="modal" style="width:min(720px,100%)">
+      <div class="card-h"><h2>Attachments</h2><button class="btn sm tag" data-close type="button">✕</button></div>
+      <div class="card-b gallery-grid" id="galleryBody"></div>
+    </div>
+  </div>
+</main>
+
+<script src="assets/mock-data.js"></script>
+<script src="assets/cyrix-range.js"></script>
+<script>
+  const API = new URLSearchParams(location.search).get("api") || "http://127.0.0.1:8000";
+
+  // Date filter (default: last 1 month). Re-runs the summary + record table on change.
+  const range = CXR.create(document.getElementById("range"), () => { loadSummary(); renderRecords(); });
+
+  // Counts for a record list — used when the range cuts into the stored snapshot window.
+  function deriveCounts(list) {
+    const by = (k) => list.reduce((a, r) => ((a[r[k]] = (a[r[k]] || 0) + 1), a), {});
+    return { total: list.length, by_call_type: by("call_type"), by_state: by("state"), by_status: by("status") };
+  }
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+    );
+  }
+
+  // Portal thumbnails are served through API proxies, which add the
+  // required Referer and User-Agent headers before fetching each image —
+  // same helper as Approval/Purchase. Needs the live API running; if it
+  // isn't, the image just fails to load (onerror hides it).
+  function attachmentImageUrl(url) {
+    try {
+      const parsed = new URL(url, window.location.href);
+      if (parsed.hostname.toLowerCase() === "apcyrixbemp.com" && parsed.pathname.startsWith("/setups/item_img/")) {
+        return `${API.replace(/\/$/, "")}/ap-image?url=${encodeURIComponent(parsed.href)}`;
+      }
+      if (parsed.hostname.toLowerCase() === "rmsclcyrix.mobilisepro.com" && parsed.pathname.startsWith("/scm/scm_files/")) {
+        return `${API.replace(/\/$/, "")}/rj-image?url=${encodeURIComponent(parsed.href)}`;
+      }
+      if (parsed.hostname.toLowerCase() === "cyrixbemp.com" && parsed.pathname.startsWith("/scm/scm_files/")) {
+        return `${API.replace(/\/$/, "")}/kerala-image?url=${encodeURIComponent(parsed.href)}`;
+      }
+    } catch (_) {}
+    return url;
+  }
+
+  function renderThumbs(urls) {
+    if (!urls || !urls.length) return '<span class="muted">—</span>';
+    const first = esc(attachmentImageUrl(urls[0]));
+    const jsonAttr = JSON.stringify(urls).replace(/&/g, "&amp;").replace(/'/g, "&#39;");
+    const count = urls.length > 1 ? `<span class="count">${urls.length}</span>` : "";
+    return `<div class="thumb-trigger" data-images='${jsonAttr}' title="View ${urls.length} image${urls.length > 1 ? "s" : ""}">
+      <img src="${first}" loading="lazy" alt="PI attachment" onerror="this.style.visibility='hidden'">${count}
+    </div>`;
+  }
+
+  const galleryModal = document.getElementById("galleryModal");
+  const galleryBody = document.getElementById("galleryBody");
+  function openGallery(urls) {
+    galleryBody.innerHTML = urls
+      .map((u) => {
+        const src = esc(attachmentImageUrl(u));
+        return `<a href="${src}" target="_blank" rel="noopener"><img src="${src}" loading="lazy" alt="PI attachment" onerror="this.style.visibility='hidden'"></a>`;
+      })
+      .join("");
+    galleryModal.classList.add("show");
+  }
+  document.addEventListener("click", (e) => {
+    const trigger = e.target.closest(".thumb-trigger");
+    if (!trigger) return;
+    try {
+      openGallery(JSON.parse(trigger.getAttribute("data-images")));
+    } catch (_) {}
+  });
+
+  function relTime(iso) {
+    if (!iso) return "never";
+    const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 5) return "just now";
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.round(s / 60)}m ago`;
+    return `${Math.round(s / 3600)}h ago`;
+  }
+
+  // Stored snapshot (assets/mock-data.js), not a live fetch — captured once
+  // from the real Cyrix API so this renders instantly, same as
+  // Approval/Purchase/Quotation.
+  function loadPoolStatus() {
+    const strip = document.getElementById("poolStrip");
+    const sources = (window.CX_MOCK && window.CX_MOCK.poolStatus && window.CX_MOCK.poolStatus.sources) || [];
+    if (sources.length === 0) {
+      strip.innerHTML = '<span class="label">Background pool</span><span class="pool-chip stale">no stored data</span>';
+      return;
+    }
+    strip.innerHTML =
+      '<span class="label">Background pool</span>' +
+      sources
+        .map(
+          (s) =>
+            `<span class="pool-chip ${esc(s.status)}" title="${esc(s.last_error || "")}">` +
+            `<span class="dot"></span><b>${esc(s.source_name)}</b> ${esc(s.status)} · ${relTime(s.last_success_at)}</span>`,
+        )
+        .join("");
+  }
+
+  function loadSummary() {
+    const statusEl = document.getElementById("status");
+    const contentEl = document.getElementById("content");
+    const data = window.CX_MOCK && window.CX_MOCK.summary;
+    if (!data) {
+      statusEl.querySelector(".card-b").textContent = "No stored data found — assets/mock-data.js didn't load.";
+      statusEl.querySelector(".card-b").classList.add("bad");
+      return;
+    }
+    // The full snapshot counts apply while the range covers the whole snapshot window;
+    // a narrower range falls back to counting the loaded sample records.
+    const full = range.covers(data.start_date, data.end_date);
+    const c = full ? data.counts : deriveCounts(((window.CX_MOCK && window.CX_MOCK.calls) || []).filter((r) => range.contains(r.date)));
+
+    document.getElementById("subtitle").textContent = full
+      ? `${data.start_date} → ${data.end_date} · ${c.total} records pooled from UP, Kerala, AP and Rajasthan.`
+      : `${range.label()} · ${c.total} records in range (counted from the ${((window.CX_MOCK && window.CX_MOCK.calls) || []).length} stored sample records).`;
+
+    document.getElementById("kTotal").textContent = c.total;
+    document.getElementById("kOnline").textContent = c.by_call_type.current_call || 0;
+    document.getElementById("kOffline").textContent = c.by_call_type.support_call || 0;
+    document.getElementById("kApproved").textContent = c.by_status["Approved"] || 0;
+
+    const states = Object.entries(c.by_state).sort((a, b) => b[1] - a[1]);
+    const maxState = Math.max(1, ...states.map(([, n]) => n));
+    document.getElementById("stateBars").innerHTML = states
+      .map(
+        ([state, n]) => `<div class="bar-row">
+          <div class="name">${esc(state)}</div>
+          <div class="track"><div class="seg solid" style="width:${Math.round((n / maxState) * 100)}%"></div></div>
+          <div class="val">${n}</div>
+        </div>`,
+      )
+      .join("");
+
+    const statuses = Object.entries(c.by_status).sort((a, b) => b[1] - a[1]);
+    document.getElementById("statusRows").innerHTML = statuses
+      .map(([status, n]) => `<tr><td>${esc(status)}</td><td class="num">${n}</td></tr>`)
+      .join("");
+
+    statusEl.style.display = "none";
+    contentEl.style.display = "block";
+  }
+
+  // The KPI/by-state/by-status cards above reflect the true full counts
+  // (window.CX_MOCK.summary). This table is a curated, representative
+  // subset of the real record list — not the full ~860 rows — same
+  // store-a-snapshot approach as Approval/Purchase, just smaller since a
+  // demo table doesn't need to literally reproduce the entire dataset.
+  let allRecords = [];
+  const qEl = document.getElementById("q");
+  const fState = document.getElementById("fState");
+  const fType = document.getElementById("fType");
+  const rowcountEl = document.getElementById("rowcount");
+
+  function populateRecordFilters() {
+    const states = [...new Set(allRecords.map((r) => r.state).filter(Boolean))].sort();
+    fState.innerHTML = '<option value="">All states</option>' + states.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
+  }
+
+  function renderRecords() {
+    const term = qEl.value.trim().toLowerCase();
+    const st = fState.value;
+    const ty = fType.value;
+    const out = allRecords.filter((r) => {
+      if (!range.contains(r.date)) return false;
+      if (st && r.state !== st) return false;
+      if (ty && r.call_type !== ty) return false;
+      if (term) {
+        const hay = [r.id, r.desc, r.requestor, r.status, r.state].join(" ").toLowerCase();
+        if (!hay.includes(term)) return false;
+      }
+      return true;
+    });
+    document.getElementById("recordRows").innerHTML = out
+      .map(
+        (r) => `<tr>
+          <td><span class="badge">${esc(r.state)}</span></td>
+          <td><span class="badge ${r.call_type === "current_call" ? "info" : "warn"}">${r.call_type === "current_call" ? "Online" : "Offline"}</span></td>
+          <td>${esc(r.id) || "—"}</td>
+          <td class="desc">${esc((r.desc || "—").slice(0, 180))}</td>
+          <td>${esc(r.requestor) || "—"}</td>
+          <td>${esc(r.status)}</td>
+          <td>${esc(r.date) || "—"}</td>
+          <td>${renderThumbs(r.images)}</td>
+        </tr>`,
+      )
+      .join("");
+    rowcountEl.textContent = `${out.length} of ${allRecords.length} sample records shown (full totals above reflect all pooled data)`;
+  }
+
+  function loadRecords() {
+    allRecords = (window.CX_MOCK && window.CX_MOCK.calls) || [];
+    populateRecordFilters();
+    renderRecords();
+  }
+  [qEl, fState, fType].forEach((el) => el.addEventListener("input", renderRecords));
+
+  function load() {
+    loadPoolStatus();
+    loadSummary();
+    loadRecords();
+  }
+  document.getElementById("refresh").addEventListener("click", load);
+  load();
+</script>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

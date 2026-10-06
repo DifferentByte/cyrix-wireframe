@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Employees</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Super Admin · Access control</div>
+      <h1>Employees</h1>
+      <p class="sub">Everyone who can sign in. Each employee gets a role; you can add or remove individual modules on top of it.</p>
+    </div>
+    <div class="actions">
+      <a class="btn primary" href="employee-edit.html"><span class="mi">person_add</span>Add employee</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <h2>All employees</h2>
+      <div class="row" style="margin-left:auto">
+        <input id="q" placeholder="Search name or email…" style="width:230px">
+        <select id="fRole"><option value="">All roles</option></select>
+        <select id="fStatus"><option value="">All status</option><option>active</option><option>invited</option><option>inactive</option></select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th>Employee</th><th>Team</th><th>Role</th><th>Sees</th><th>Zone</th><th>Status</th><th>Last login</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="card-b small muted" id="count"></div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  $("fRole").innerHTML += SA.ROLES.map(function (r) { return '<option value="' + r.id + '">' + r.name + "</option>"; }).join("");
+  var tone = { active: "good", invited: "warn", inactive: "bad" };
+
+  function render() {
+    var q = $("q").value.toLowerCase(), fr = $("fRole").value, fs = $("fStatus").value;
+    var list = SA.EMPLOYEES.filter(function (e) {
+      return (!q || (e.name + e.email).toLowerCase().indexOf(q) >= 0) && (!fr || e.role === fr) && (!fs || e.status === fs);
+    });
+    $("rows").innerHTML = list.map(function (e) {
+      var mods = SA.empModules(e), extra = (e.grant || []).length || (e.revoke || []).length;
+      return '<tr><td><div class="who"><div class="avatar">' + SA.initials(e.name) + '</div><div><b>' + e.name + "</b><small>" + e.email + "</small></div></div></td>" +
+        "<td>" + SA.teamName(e.team) + "</td><td>" + SA.role(e.role).name + (extra ? ' <span class="badge warn" title="Has per-person overrides">custom</span>' : "") + "</td>" +
+        '<td class="small">' + mods.length + " of " + SA.MODS.length + " modules</td>" +
+        "<td class='small'>" + SA.zoneText(e.zones) + '</td><td><span class="badge ' + tone[e.status] + '"><span class="d"></span>' + e.status + "</span></td>" +
+        '<td class="small muted nowrap">' + e.last + "</td>" +
+        '<td class="nowrap"><a class="btn sm" href="employee-edit.html?id=' + e.id + '">Edit</a> ' +
+        (e.status === "inactive"
+          ? '<button class="btn sm" data-toast="' + e.name + ' reactivated (demo)" type="button">Activate</button>'
+          : '<button class="btn sm danger" data-toast="' + e.name + ' deactivated (demo)" type="button">Deactivate</button>') + "</td></tr>";
+    }).join("") || '<tr><td colspan="8" class="muted" style="padding:24px 20px">No employees match.</td></tr>';
+    $("count").textContent = "Showing " + list.length + " of " + SA.EMPLOYEES.length + " employees";
+  }
+  ["q", "fRole", "fStatus"].forEach(function (id) { $(id).addEventListener("input", render); });
+  render();
+</script>
+</body>
+</html>

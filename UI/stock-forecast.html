@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>90-Day Stock Forecast</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Planning · Handbook §24</div>
+      <h1>Stock monitoring & 90-day forecast</h1>
+      <p class="sub">AI projects the next 90 days of demand from the last three months of consumption, net of current stock, open POs and pending PRs. When stock would fall short, it proposes a stock PR.</p>
+    </div>
+    <div class="actions">
+      <select style="width:auto"><option>All warehouses</option></select>
+      <button class="btn primary">Generate PRs for selected (3)</button>
+    </div>
+  </div>
+
+  <div class="card"><div class="card-b">
+    <div class="flow"><span class="s done">3-month consumption</span><span class="a">→</span><span class="s done">AI forecast</span><span class="a">→</span><span class="s done">90-day requirement</span><span class="a">→</span><span class="s done">Current stock check</span><span class="a">→</span><span class="s now">Shortfall calculation</span><span class="a">→</span><span class="s">Automatic PR</span></div>
+  </div></div>
+
+  <div class="grid g4 mt">
+    <div class="card kpi"><div class="l">Items tracked</div><div class="v">1,146</div></div>
+    <div class="card kpi"><div class="l">Projected shortfall</div><div class="v down">23</div><div class="d muted">8 critical</div></div>
+    <div class="card kpi"><div class="l">Shortfall value</div><div class="v">₹6.9 L</div></div>
+    <div class="card kpi"><div class="l">Forecast accuracy (last Q)</div><div class="v">87%</div></div>
+  </div>
+
+  <div class="grid g2 mt">
+    <div class="card">
+      <div class="card-h"><h3>SP-SPO-00102 · SpO₂ sensor adult</h3><span class="badge bad tag">Critical</span></div>
+      <div class="card-b">
+        <div class="bars" style="height:170px">
+          <div class="b"><i class="alt" style="height:52%"></i><span>Jul · 27</span></div>
+          <div class="b"><i class="alt" style="height:64%"></i><span>Aug · 31</span></div>
+          <div class="b"><i class="alt" style="height:70%"></i><span>Sep · 35</span></div>
+          <div class="b"><i class="fc" style="height:74%"></i><span>Oct · 36</span></div>
+          <div class="b"><i class="fc" style="height:80%"></i><span>Nov · 37</span></div>
+          <div class="b"><i class="fc" style="height:86%"></i><span>Dec · 39</span></div>
+        </div>
+        <div class="legend mt-s"><span><i style="background:var(--line-strong)"></i>Actual consumption</span><span><i style="background:var(--ai-fg)"></i>AI forecast</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Shortfall calculation</h3></div>
+      <div class="card-b tight">
+        <table class="t"><tbody>
+          <tr><td>Average monthly consumption</td><td class="num">31</td></tr>
+          <tr><td>90-day forecast requirement</td><td class="num">112</td></tr>
+          <tr><td>− Current stock</td><td class="num">18</td></tr>
+          <tr><td>− Open POs</td><td class="num">20</td></tr>
+          <tr><td>− Pending PRs</td><td class="num">0</td></tr>
+          <tr><td>+ Minimum stock</td><td class="num">25</td></tr>
+          <tr style="font-weight:650"><td>Recommended PR qty (lead time 9 d)</td><td class="num down">99</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>Recommended stock PRs</h2></div>
+    <div class="table-wrap"><table class="t">
+      <thead><tr><th><input type="checkbox" checked></th><th>Item</th><th>Criticality</th><th class="num">3-m avg</th><th class="num">Stock</th><th class="num">Open PO</th><th class="num">Pending PR</th><th class="num">Lead time</th><th class="num">Min / Max</th><th class="num">90-d need</th><th class="num">Suggested</th><th>Stock cover</th></tr></thead>
+      <tbody>
+        <tr><td><input type="checkbox" checked></td><td><span class="mono">SP-SPO-00102</span> SpO₂ sensor adult</td><td><span class="badge bad">High</span></td><td class="num">31</td><td class="num">18</td><td class="num">20</td><td class="num">0</td><td class="num">9 d</td><td class="num">25 / 80</td><td class="num">112</td><td class="num"><b>99</b></td><td><div class="bar bad" style="width:80px"><i style="width:34%"></i></div></td></tr>
+        <tr><td><input type="checkbox" checked></td><td><span class="mono">SP-NIB-00044</span> NIBP cuff adult</td><td><span class="badge warn">Medium</span></td><td class="num">24</td><td class="num">22</td><td class="num">30</td><td class="num">0</td><td class="num">6 d</td><td class="num">20 / 60</td><td class="num">76</td><td class="num"><b>44</b></td><td><div class="bar warn" style="width:80px"><i style="width:68%"></i></div></td></tr>
+        <tr><td><input type="checkbox" checked></td><td><span class="mono">SP-INF-00077</span> Infusion pump battery</td><td><span class="badge bad">High</span></td><td class="num">9</td><td class="num">2</td><td class="num">12</td><td class="num">2</td><td class="num">14 d</td><td class="num">8 / 24</td><td class="num">30</td><td class="num"><b>22</b></td><td><div class="bar bad" style="width:80px"><i style="width:40%"></i></div></td></tr>
+        <tr><td><input type="checkbox"></td><td><span class="mono">SP-ECG-00415</span> ECG lead set 5-wire</td><td><span class="badge">Low</span></td><td class="num">6</td><td class="num">14</td><td class="num">0</td><td class="num">0</td><td class="num">5 d</td><td class="num">6 / 20</td><td class="num">19</td><td class="num"><b>11</b></td><td><div class="bar warn" style="width:80px"><i style="width:74%"></i></div></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

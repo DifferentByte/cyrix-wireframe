@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roles</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Super Admin · Access control</div>
+      <h1>Roles</h1>
+      <p class="sub">A role is a reusable bundle of module access. Change a role once and every employee with it is updated.</p>
+    </div>
+    <div class="actions">
+      <button class="btn primary" data-open="newRole" type="button"><span class="mi">add</span>Create role</button>
+    </div>
+  </div>
+
+  <div class="grid g3" id="cards"></div>
+
+  <div class="modal-bg" id="newRole">
+    <div class="modal" style="width:min(520px,100%)">
+      <div class="card-h"><h2>Create role</h2><button class="btn sm tag" data-close type="button">✕</button></div>
+      <div class="card-b">
+        <div class="form">
+          <div class="field full"><label>Role name <span class="req">*</span></label><input placeholder="e.g. Regional Purchase Lead"></div>
+          <div class="field full"><label>Description</label><textarea rows="2" placeholder="What does this role do?"></textarea></div>
+          <div class="field full"><label>Start from</label>
+            <select id="tmpl"><option value="">Blank — no access</option></select>
+            <div class="hint">Copy another role's permissions, then adjust them on the next screen.</div></div>
+        </div>
+      </div>
+      <div class="card-f"><button class="btn" data-close type="button">Cancel</button>
+        <a class="btn primary" href="role-edit.html?new=1">Create & set permissions</a></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  document.getElementById("cards").innerHTML = SA.ROLES.map(function (r) {
+    var n = SA.EMPLOYEES.filter(function (e) { return e.role === r.id; }).length;
+    return '<a class="card role-card" href="role-edit.html?role=' + r.id + '">' +
+      '<div class="row between"><div class="rc-ic"><span class="mi">' + r.icon + '</span></div><span class="badge">' + n + " employee" + (n === 1 ? "" : "s") + "</span></div>" +
+      "<h3>" + r.name + "</h3><p>" + r.desc + '</p><div class="chips">' + SA.chips(Object.keys(r.perms)) + "</div>" +
+      '<div class="small faint"><span class="mi" style="font-size:15px;vertical-align:middle">public</span> ' + SA.zoneText(r.zones) + "</div></a>";
+  }).join("");
+  document.getElementById("tmpl").innerHTML += SA.ROLES.map(function (r) { return '<option value="' + r.id + '">' + r.name + "</option>"; }).join("");
+</script>
+</body>
+</html>

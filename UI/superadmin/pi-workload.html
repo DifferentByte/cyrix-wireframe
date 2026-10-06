@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PI workload</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Super Admin · Teams & workload</div>
+      <h1>PI workload</h1>
+      <p class="sub">Who holds how many Purchase Indents right now. Click a column to sort, or a name to see their PIs.</p>
+    </div>
+    <div class="actions"><button class="btn" data-toast="Exported pi-workload.csv (demo)" type="button"><span class="mi">download</span>Export CSV</button></div>
+  </div>
+
+  <div class="grid g4" id="kpis"></div>
+
+  <div class="alert warn mt" id="oldest"></div>
+
+  <div class="card mt">
+    <div class="card-h">
+      <h2>By employee</h2>
+      <div class="row" style="margin-left:auto">
+        <select id="fTeam"><option value="">All teams</option></select>
+        <select id="fZone"><option value="">All zones</option></select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th class="sortable" data-k="name">Employee</th><th class="sortable" data-k="team">Team</th><th class="sortable num" data-k="assigned">Assigned</th><th class="sortable num" data-k="approved">Approved</th><th class="sortable num" data-k="pending">Pending ▾</th><th class="sortable num" data-k="overdue">Overdue</th><th>Progress</th><th class="sortable num" data-k="tat">Avg TAT</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>By team</h2></div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th>Team</th><th class="num">Members</th><th class="num">Assigned</th><th class="num">Approved</th><th class="num">Pending</th><th class="num">Overdue</th><th class="num">Approval rate</th><th class="num">Avg TAT</th></tr></thead>
+        <tbody id="teams"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  $("fTeam").innerHTML += SA.TEAMS.map(function (t) { return '<option value="' + t.id + '">' + t.name + "</option>"; }).join("");
+  $("fZone").innerHTML += SA.ZONES.map(function (z) { return "<option>" + z + "</option>"; }).join("");
+  var sortK = "pending", dir = -1;
+
+  var tot = { assigned: 0, approved: 0, pending: 0, overdue: 0 }, worst = null;
+  SA.EMPLOYEES.forEach(function (e) { var w = SA.work(e.id); ["assigned", "approved", "pending", "overdue"].forEach(function (k) { tot[k] += w[k]; });
+    w.pis.forEach(function (p) { if (!worst || p.age > worst.p.age) worst = { p: p, e: e }; }); });
+  var kp = [["Total PIs", tot.assigned, SA.TEAMS.length + " teams", "assignment"], ["Approved", tot.approved, Math.round(tot.approved / tot.assigned * 100) + "% overall", "task_alt"],
+    ["Pending", tot.pending, "across all employees", "pending_actions"], ["Overdue", tot.overdue, "waiting > 3 days", "warning"]];
+  $("kpis").innerHTML = kp.map(function (k) { return '<div class="card kpi"><div class="l">' + k[0] + '</div><span class="mi kpi-ic">' + k[3] + '</span><div class="v">' + k[1] + '</div><div class="d">' + k[2] + "</div></div>"; }).join("");
+  $("oldest").innerHTML = "<b>Longest waiting:</b> PI " + worst.p.id + " (" + worst.p.item + ") has been with <a href='employee-workload.html?id=" + worst.e.id + "'><b>" + worst.e.name + "</b></a> for " + worst.p.age + " days.";
+
+  function render() {
+    var ft = $("fTeam").value, fz = $("fZone").value;
+    var list = SA.EMPLOYEES.filter(function (e) { return (!ft || e.team === ft) && (!fz || e.zones === "all" || e.zones.indexOf(fz) >= 0); }).map(function (e) {
+      var w = SA.work(e.id); return { e: e, name: e.name, team: SA.teamName(e.team), assigned: w.assigned, approved: w.approved, pending: w.pending, overdue: w.overdue, tat: w.tat };
+    });
+    list.sort(function (a, b) { var x = a[sortK], y = b[sortK]; return (x > y ? 1 : x < y ? -1 : 0) * dir; });
+    $("rows").innerHTML = list.map(function (r) {
+      var pct = r.assigned ? r.approved / r.assigned * 100 : 0;
+      return '<tr><td><a href="employee-workload.html?id=' + r.e.id + '"><b>' + r.name + "</b></a>" + (r.e.status !== "active" ? ' <span class="badge">' + r.e.status + "</span>" : "") + "</td><td>" + r.team + '</td><td class="num">' + r.assigned + '</td><td class="num">' + r.approved + '</td><td class="num"><b>' + r.pending + '</b></td><td class="num" style="' + (r.overdue ? "color:var(--danger);font-weight:600" : "") + '">' + r.overdue + '</td>' +
+        '<td><div class="wbar"><i class="ok" style="width:' + pct + '%"></i><i class="pend" style="width:' + (r.assigned ? 100 - pct : 0) + '%"></i></div></td><td class="num">' + (r.tat ? r.tat + " h" : "—") + "</td></tr>";
+    }).join("") || '<tr><td colspan="8" class="muted" style="padding:24px 20px">No employees match.</td></tr>';
+  }
+  document.querySelector("thead").addEventListener("click", function (e) {
+    var th = e.target.closest("[data-k]"); if (!th) return;
+    var k = th.getAttribute("data-k"); dir = k === sortK ? -dir : (k === "name" || k === "team" ? 1 : -1); sortK = k;
+    document.querySelectorAll("th.sortable").forEach(function (h) { h.textContent = h.textContent.replace(/ [▾▴]$/, ""); });
+    th.textContent += dir < 0 ? " ▾" : " ▴"; render();
+  });
+  ["fTeam", "fZone"].forEach(function (id) { $(id).addEventListener("input", render); });
+  render();
+
+  $("teams").innerHTML = SA.TEAMS.map(function (t) {
+    var s = SA.teamStats(t.id);
+    return '<tr><td><a href="team-detail.html?team=' + t.id + '"><b>' + t.name + '</b></a></td><td class="num">' + s.members + '</td><td class="num">' + s.assigned + '</td><td class="num">' + s.approved + '</td><td class="num"><b>' + s.pending + '</b></td><td class="num" style="' + (s.overdue ? "color:var(--danger);font-weight:600" : "") + '">' + s.overdue + '</td><td class="num">' + s.rate + '%</td><td class="num">' + s.tat + " h</td></tr>";
+  }).join("");
+</script>
+</body>
+</html>

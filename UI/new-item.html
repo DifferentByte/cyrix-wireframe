@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Item Creation</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Requisition · Handbook §5</div>
+      <h1>New item creation</h1>
+      <p class="sub">When no SAP item code exists, the Service Coordinator starts a new item request. After technical approval, Purchase creates the item in SAP and the new code syncs back to AOS.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" data-toast="Draft saved">Save draft</button>
+      <button class="btn primary" data-toast="NIR-0419 sent for technical approval">Submit request</button>
+    </div>
+  </div>
+
+  <div class="card"><div class="card-b">
+    <div class="flow">
+      <span class="s done">Field requirement</span><span class="a">→</span>
+      <span class="s done">Technical verification</span><span class="a">→</span>
+      <span class="s now">New item request</span><span class="a">→</span>
+      <span class="s">Technical approval</span><span class="a">→</span>
+      <span class="s">SAP item creation</span><span class="a">→</span>
+      <span class="s">Item code generated</span><span class="a">→</span>
+      <span class="s">Code updated in AOS</span><span class="a">→</span>
+      <span class="s">PR creation</span><span class="a">→</span>
+      <span class="s">Procurement</span>
+    </div>
+  </div></div>
+
+  <div class="split mt">
+    <div class="card">
+      <div class="card-h"><h2>NIR-0419 · X-ray tube housing seal</h2><span class="badge ai tag">No SAP match (best 38%)</span></div>
+      <div class="card-b form">
+        <div class="field full"><label>Item description <span class="req">*</span></label><input value="Oil seal / O-ring for X-ray tube housing, high-voltage side"></div>
+        <div class="field"><label>Make / manufacturer <span class="req">*</span></label><input value="Allengers"></div>
+        <div class="field"><label>Model / part no.</label><input value="HV-TH-OR-58"></div>
+        <div class="field"><label>Parent equipment</label><input value="Allengers MARS 60 · CYX-OD-000871"></div>
+        <div class="field"><label>Item group (SAP)</label><select><option>Spares – Radiology</option><option>Spares – Critical care</option><option>Consumables</option></select></div>
+        <div class="field full"><label>Technical specification <span class="req">*</span></label><textarea>Viton O-ring, ID 58 mm × CS 3.5 mm, transformer-oil resistant, operating temp up to 120 °C.</textarea></div>
+        <div class="field"><label>Compatibility</label><input value="MARS 60, MARS 80 tube housings"></div>
+        <div class="field"><label>Application / purpose</label><input value="Oil leak at HV cable entry"></div>
+        <div class="field"><label>UoM</label><select><option>Nos</option><option>Set</option></select></div>
+        <div class="field"><label>HSN code</label><input value="40169320"></div>
+        <div class="field full"><label>Images <span class="req">*</span></label>
+          <div class="grid g4" style="gap:10px">
+            <div class="img" data-part="filter"><span class="cap">Part</span></div>
+            <div class="img" data-part="doc"><span class="cap">Nameplate</span></div>
+            <div class="drop" style="display:grid;place-items:center">+ Add</div>
+          </div>
+        </div>
+        <div class="field full"><label>Other technical information</label><textarea placeholder="Drawings, OEM references, alternative part numbers…"></textarea></div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h3>Request status</h3></div>
+        <div class="card-b">
+          <ul class="tl">
+            <li class="done"><b>Requested</b> by Service Coordinator (Meera P.)<div class="when">30 Sep, 10:12</div></li>
+            <li class="now"><b>Technical approval</b>, pending with R. Nair<div class="when">SLA 24 h</div></li>
+            <li><b>SAP item creation</b> by Purchase (auto via DI API)</li>
+            <li><b>Item code generated</b> and synced to AOS and coordinator records</li>
+            <li><b>PR auto-created</b> from linked PI-OD-1182</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Closest existing items</h3></div>
+        <div class="card-b tight"><div class="list">
+          <div class="it"><div class="grow"><div class="t1 mono">SP-RAD-00412</div><div class="t2">O-ring kit, Siemens tube housing</div></div><span class="badge">38%</span></div>
+          <div class="it"><div class="grow"><div class="t1 mono">SP-GEN-01877</div><div class="t2">Viton O-ring assorted box</div></div><span class="badge">31%</span></div>
+        </div></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Purchase: create in SAP</h3></div>
+        <div class="card-b stack">
+          <div class="field"><label>Generated item code</label><input readonly value="— after approval —"></div>
+          <button class="btn" disabled>Create item in SAP</button>
+          <p class="small muted">Enabled after technical approval. Creation can be automated.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Approval</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+<style>
+  /* Priority toggle button — replaces the old checkbox. */
+  .priority-toggle{height:28px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+  .priority-toggle .mi{font-size:15px}
+  .priority-toggle.on{background:var(--accent);border-color:var(--accent);color:#fff}
+</style>
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Purchase &amp; Spares · Approval</div>
+      <h1>Approval</h1>
+      <p class="sub">Approved-in-PI records awaiting this dashboard's ITR/PR decision, plus the history of what's already been decided here — with a live SAP stock check per item code.</p>
+    </div>
+    <div class="actions">
+      <div id="range"></div>
+      <select id="fState"><option value="">All states</option></select>
+      <button class="btn" id="refresh" type="button"><span class="mi">refresh</span>Refresh</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabs" data-tabs="appr">
+      <button class="on" data-tab="pending" id="pendingTabBtn">Pending</button>
+      <button data-tab="approved" id="approvedTabBtn">Approved history</button>
+      <button data-tab="auto" id="autoTabBtn">Auto Approved history</button>
+    </div>
+    <div id="status" class="card-b muted">Loading…</div>
+
+    <!-- Pending: approved in the PI/portal (so item code, stock check etc.
+         already exist) but not yet decided in this dashboard — the
+         primary worklist. Approved/Auto Approved history below are a
+         simulated split of the same underlying records once "decided". -->
+    <div class="tab-panel on card-b" data-panel="appr:pending" id="pendingPanel">
+      <div class="table-wrap">
+        <table class="t">
+          <thead><tr><th>State</th><th>Item code</th><th>Item description</th><th>Priority</th><th>Action</th></tr></thead>
+          <tbody id="pendingRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Approved / Auto Approved: the same pool, split by a simulated
+         auto-approved flag (see isAutoApproved below) representing
+         records already decided in this dashboard. -->
+    <div class="tab-panel card-b" data-panel="appr:approved" id="approvedPanel">
+      <div class="table-wrap">
+        <table class="t">
+          <thead><tr><th>State</th><th>Item code</th><th>Item description</th><th>Priority</th><th>Action</th></tr></thead>
+          <tbody id="approvedRows"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="tab-panel card-b" data-panel="appr:auto" id="autoPanel">
+      <div class="alert info">Auto-approved is a preview classification — SAP isn't recording which approvals were automatic vs manual yet, so this split is simulated.</div>
+      <div class="table-wrap mt">
+        <table class="t">
+          <thead><tr><th>State</th><th>Item code</th><th>Item description</th><th>Priority</th><th>Action</th></tr></thead>
+          <tbody id="autoRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <p class="small faint mt">Stored snapshot of real Cyrix/SAP data · attachment images proxy through <span id="apiBase"></span> when it's running</p>
+
+  <div class="modal-bg" id="galleryModal">
+    <div class="modal" style="width:min(720px,100%)">
+      <div class="card-h"><h2>Attachments</h2><button class="btn sm tag" data-close type="button">✕</button></div>
+      <div class="card-b gallery-grid" id="galleryBody"></div>
+    </div>
+  </div>
+
+  <!-- Approved / Auto Approved detail — asset code/description, last
+       purchase for asset, both stock breakdowns, warnings, attachments. -->
+  <div class="modal-bg" id="detailModal">
+    <div class="modal" style="width:min(720px,100%)">
+      <div class="card-h"><h2 id="dmTitle">Record detail</h2><button class="btn sm tag" data-close type="button">✕</button></div>
+      <div class="card-b" id="dmBody"></div>
+      <div class="card-f">
+        <button class="btn" data-close type="button">Close</button>
+        <button class="btn danger" id="rejectBtn" type="button" style="display:none">Reject with remark</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="assets/mock-data.js"></script>
+<script src="assets/cyrix-range.js"></script>
+<script>
+  // Separate static prototype folder — the real Cyrix API runs on :8000.
+  // Override with ?api=http://host:port
+  const API = new URLSearchParams(location.search).get("api") || "http://127.0.0.1:8000";
+  document.getElementById("apiBase").textContent = API;
+
+  const statusEl = document.getElementById("status");
+  const fState = document.getElementById("fState");
+
+  let allApproved = [];
+  // Date filter (default: last 1 month) — reloads the table when changed.
+  const range = CXR.create(document.getElementById("range"), () => load());
+  let currentDetailRecord = null;
+  let currentDetailContext = null;
+
+  const REJECTED_KEY = "cx_rejected_v1";
+  function rejectedKeys() {
+    try { return new Set(JSON.parse(sessionStorage.getItem(REJECTED_KEY) || "[]")); } catch (_) { return new Set(); }
+  }
+  // Cached on first call (at load, before any item-code edit) so the key
+  // stays stable even after editItemCode() mutates r.item_code.
+  function recordKey(r) {
+    if (!r._stableKey) r._stableKey = `${r.item_code}|${r.barcode}|${r.created_date}`;
+    return r._stableKey;
+  }
+  function rejectRecord(r, remark) {
+    const keys = rejectedKeys();
+    keys.add(recordKey(r));
+    try { sessionStorage.setItem(REJECTED_KEY, JSON.stringify([...keys])); } catch (_) {}
+  }
+
+  // Item code correction — only makes sense before a decision, so it's
+  // only offered on the Pending tab. Persisted per-session the same way
+  // as rejections, keyed by the record's stable (pre-edit) identity.
+  const ITEMCODE_KEY = "cx_itemcode_overrides_v1";
+  function itemCodeOverrides() {
+    try { return JSON.parse(sessionStorage.getItem(ITEMCODE_KEY) || "{}"); } catch (_) { return {}; }
+  }
+  function saveItemCodeOverride(key, newCode) {
+    const overrides = itemCodeOverrides();
+    overrides[key] = newCode;
+    try { sessionStorage.setItem(ITEMCODE_KEY, JSON.stringify(overrides)); } catch (_) {}
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+    );
+  }
+
+  function seedFrom(str) {
+    let h = 0;
+    for (let i = 0; i < String(str).length; i++) h = (h * 31 + String(str).charCodeAt(i)) >>> 0;
+    return h;
+  }
+
+  // SAP isn't recording an automatic-vs-manual approval flag for this
+  // company — simulated, seeded on the record's identity so it's stable
+  // across reloads rather than reshuffling every render. See the preview
+  // banner on the Auto Approved tab.
+  function isAutoApproved(r) {
+    return seedFrom(r.item_code + "|" + r.barcode + "|" + r.created_date) % 10 < 3; // ~30%
+  }
+
+  // Portal thumbnails are served through API proxies, which add the
+  // required Referer and User-Agent headers before fetching each image.
+  function attachmentImageUrl(url) {
+    try {
+      const parsed = new URL(url, window.location.href);
+      if (parsed.hostname.toLowerCase() === "apcyrixbemp.com" && parsed.pathname.startsWith("/setups/item_img/")) {
+        return `${API.replace(/\/$/, "")}/ap-image?url=${encodeURIComponent(parsed.href)}`;
+      }
+      if (parsed.hostname.toLowerCase() === "rmsclcyrix.mobilisepro.com" && parsed.pathname.startsWith("/scm/scm_files/")) {
+        return `${API.replace(/\/$/, "")}/rj-image?url=${encodeURIComponent(parsed.href)}`;
+      }
+      if (parsed.hostname.toLowerCase() === "cyrixbemp.com" && parsed.pathname.startsWith("/scm/scm_files/")) {
+        return `${API.replace(/\/$/, "")}/kerala-image?url=${encodeURIComponent(parsed.href)}`;
+      }
+    } catch (_) {}
+    return url;
+  }
+
+  function renderThumbs(urls, large) {
+    if (!urls || !urls.length) return '<span class="muted">—</span>';
+    const first = escapeHtml(attachmentImageUrl(urls[0]));
+    const jsonAttr = JSON.stringify(urls).replace(/&/g, "&amp;").replace(/'/g, "&#39;");
+    const count = urls.length > 1 ? `<span class="count">${urls.length}</span>` : "";
+    return `<div class="thumb-trigger${large ? " lg" : ""}" data-images='${jsonAttr}' title="View ${urls.length} image${urls.length > 1 ? "s" : ""}">
+      <img src="${first}" loading="lazy" alt="PI attachment" onerror="this.style.visibility='hidden'">${count}
+    </div>`;
+  }
+
+  const galleryModal = document.getElementById("galleryModal");
+  const galleryBody = document.getElementById("galleryBody");
+  function openGallery(urls) {
+    galleryBody.innerHTML = urls
+      .map((u) => {
+        const src = escapeHtml(attachmentImageUrl(u));
+        return `<a href="${src}" target="_blank" rel="noopener"><img src="${src}" loading="lazy" alt="PI attachment" onerror="this.style.visibility='hidden'"></a>`;
+      })
+      .join("");
+    galleryModal.classList.add("show");
+  }
+  document.addEventListener("click", (e) => {
+    const trigger = e.target.closest(".thumb-trigger");
+    if (!trigger) return;
+    try {
+      openGallery(JSON.parse(trigger.getAttribute("data-images")));
+    } catch (_) {}
+  });
+
+  function lastPurchaseCell(r) {
+    if (r.is_new === null || r.is_new === undefined) return '<span class="muted">—</span>';
+    if (r.is_new) return '<span class="badge good">New</span>';
+    return escapeHtml(r.last_purchase_date);
+  }
+
+  // Same-state cell shows what's actually left after earlier approved
+  // requests for the same item already claimed some of this state's pool
+  // (remaining_before) — the number that drove this row's ITR vs PR split —
+  // with the state's raw total in the tooltip for context.
+  function sameStateCell(r) {
+    if (!r.item_code) return { text: "—", title: "no item code" };
+    if (r.stock_check_failed) return { text: "?", title: "SAP stock check failed — worker may be busy/overloaded, retry later" };
+    if (r.state_stock_qty === null || r.state_stock_qty === undefined) return { text: "—", title: "stock unknown" };
+    const remain = r.remaining_before ?? r.state_stock_qty;
+    const title = remain === r.state_stock_qty
+      ? `${r.state_stock_qty} in ${r.state}`
+      : `${remain} left in ${r.state} after earlier approved requests for the same item (${r.state_stock_qty} in ${r.state} total)`;
+    return { text: String(remain), title };
+  }
+
+  // Other-state cell: company-wide total minus this state's own stock —
+  // physically sitting in a different state's warehouse, not available to
+  // fulfil this request even though it counts toward the item's total.
+  function otherStateCell(r) {
+    if (!r.item_code) return { text: "—", title: "no item code" };
+    if (r.stock_check_failed) return { text: "?", title: "SAP stock check failed — worker may be busy/overloaded, retry later" };
+    if (r.stock_total === null || r.stock_total === undefined || r.state_stock_qty === null || r.state_stock_qty === undefined) {
+      return { text: "—", title: "stock unknown" };
+    }
+    const other = r.stock_total - r.state_stock_qty;
+    return { text: String(other), title: `${other} total company-wide outside ${r.state} (${r.stock_total} total company-wide)` };
+  }
+
+  // Flags worth calling out before approving/sourcing this item.
+  function recordWarnings(r) {
+    const warnings = [];
+    if (r.no_item_code) {
+      warnings.push("New item creation — this item has no SAP item code yet; one needs to be created before it can be purchased.");
+    }
+    if (r.is_new === false && r.last_purchase_date) {
+      warnings.push(`Recently purchased item of the same asset — this asset/barcode was already purchased for on ${escapeHtml(r.last_purchase_date)}. Check it isn't a duplicate request.`);
+    }
+    return warnings;
+  }
+  function renderWarnings(r) {
+    const warnings = recordWarnings(r);
+    if (warnings.length === 0) return "";
+    return warnings.map((w) => `<div class="alert warn mt">${w}</div>`).join("");
+  }
+
+  function populateStateFilter() {
+    const states = [...new Set(allApproved.map((r) => r.state).filter(Boolean))].sort();
+    const current = fState.value;
+    fState.innerHTML =
+      '<option value="">All states</option>' +
+      states.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+    fState.value = states.includes(current) ? current : "";
+  }
+
+  // Shared by the table row and the detail popup, so the ITR/PR buttons
+  // behave identically in both places. They never actually create an ITR
+  // or PR — Approval is for triaging, not for sourcing vendors — but in
+  // the table (interactive=true) clicking one opens the detail popup via
+  // the row's own click listener, same as clicking anywhere else on the row.
+  function renderActionButtons(r, interactive) {
+    return (r.action_labels || [])
+      .map((label) => {
+        if (r.stock_check_failed) {
+          return `<button class="btn sm warn" type="button" disabled>${escapeHtml(label)}</button>`;
+        }
+        const isPr = !label.includes("ITR");
+        const cls = isPr ? "danger" : "good";
+        const disabledAttr = interactive ? "" : "disabled";
+        return `<button class="btn sm ${cls}" type="button" ${disabledAttr} data-base-label="${escapeHtml(label)}">${escapeHtml(label)}</button>`;
+      })
+      .join(" ");
+  }
+
+  // History tabs show what was decided, not a still-actionable button —
+  // "approve and create ITR (qty 1)" becomes "ITR created (qty 1)".
+  function renderActionOutcome(r) {
+    if (r.stock_check_failed) {
+      return `<span class="badge warn">Stock check failed — unresolved</span>`;
+    }
+    return (r.action_labels || [])
+      .map((label) => {
+        const isPr = !label.includes("ITR");
+        const qtyMatch = label.match(/\(qty (\d+)\)/);
+        const qty = qtyMatch ? ` (qty ${qtyMatch[1]})` : "";
+        const text = (isPr ? "PR created" : "ITR created") + qty;
+        return `<span class="badge ${isPr ? "info" : "good"}"><span class="mi" style="font-size:13px">check</span>${escapeHtml(text)}</span>`;
+      })
+      .join(" ");
+  }
+
+  function renderPriorityToggle() {
+    return `<button class="priority-toggle" type="button" title="Mark this request as high priority">
+      <span class="mi">bolt</span>Priority
+    </button>`;
+  }
+  function wirePriorityToggles(container) {
+    container.querySelectorAll(".priority-toggle").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const on = btn.classList.toggle("on");
+        const row = btn.closest("tr") || btn.closest(".card-b");
+        row.querySelectorAll(".btn[data-base-label]").forEach((abtn) => {
+          const base = abtn.getAttribute("data-base-label");
+          abtn.textContent = on ? `Priority — ${base}` : base;
+        });
+      });
+    });
+  }
+
+  function renderApprovedTable(bodyEl, list, context) {
+    if (list.length === 0) {
+      bodyEl.innerHTML = '<tr><td colspan="5" class="muted">No records.</td></tr>';
+      return;
+    }
+    const isHistory = context === "history";
+    bodyEl.innerHTML = list
+      .map((r, idx) => `<tr data-row="${idx}" style="cursor:pointer">
+          <td>${escapeHtml(r.state)}</td>
+          <td class="mono">${escapeHtml(r.item_code)}</td>
+          <td>${escapeHtml(r.item_desc || "")}</td>
+          <td>${isHistory ? '<span class="muted small">Decided</span>' : renderPriorityToggle()}</td>
+          <td>${isHistory ? renderActionOutcome(r) : renderActionButtons(r, true)}</td>
+        </tr>`)
+      .join("");
+    if (!isHistory) wirePriorityToggles(bodyEl);
+    // Whole row — including the action button, which just opens this same
+    // popup — opens the detail popup, except clicks on the priority toggle,
+    // which has its own behaviour above.
+    bodyEl.querySelectorAll("tr[data-row]").forEach((tr) => {
+      tr.addEventListener("click", (e) => {
+        if (e.target.closest(".priority-toggle")) return;
+        openDetailModal(list[Number(tr.getAttribute("data-row"))], context);
+      });
+    });
+  }
+
+  function renderPendingTab() {
+    const selected = fState.value;
+    const rejected = rejectedKeys();
+    const base = (selected ? allApproved.filter((r) => r.state === selected) : allApproved)
+      .filter((r) => !rejected.has(recordKey(r)));
+    document.getElementById("pendingTabBtn").textContent = `Pending (${base.length})`;
+    renderApprovedTable(document.getElementById("pendingRows"), base, "pending");
+  }
+
+  function renderApprovedTabs() {
+    const selected = fState.value;
+    const rejected = rejectedKeys();
+    const base = (selected ? allApproved.filter((r) => r.state === selected) : allApproved)
+      .filter((r) => !rejected.has(recordKey(r)));
+    const approved = base.filter((r) => !isAutoApproved(r));
+    const auto = base.filter((r) => isAutoApproved(r));
+    document.getElementById("approvedTabBtn").textContent = `Approved history (${approved.length})`;
+    document.getElementById("autoTabBtn").textContent = `Auto Approved history (${auto.length})`;
+    renderApprovedTable(document.getElementById("approvedRows"), approved, "history");
+    renderApprovedTable(document.getElementById("autoRows"), auto, "history");
+  }
+
+  // Everything that didn't fit the compact table — asset code/description,
+  // requestor, date, last purchase for asset, both stock breakdowns,
+  // warnings, attachments. context = "pending" shows the Reject button;
+  // "history" (already decided) hides it.
+  const detailModal = document.getElementById("detailModal");
+  const rejectBtn = document.getElementById("rejectBtn");
+  function openDetailModal(r, context) {
+    currentDetailRecord = r;
+    currentDetailContext = context;
+    const isHistory = context === "history";
+    rejectBtn.style.display = isHistory ? "none" : "";
+    document.getElementById("dmTitle").textContent = r.item_code + " — " + (r.item_desc || "");
+    const sameState = sameStateCell(r);
+    const otherState = otherStateCell(r);
+    document.getElementById("dmBody").innerHTML = `
+      ${renderWarnings(r)}
+      <div class="row mt" style="gap:24px;align-items:flex-start;flex-wrap:nowrap">
+        <dl class="kv" style="flex:1;min-width:0">
+          <dt>State</dt><dd>${escapeHtml(r.state)}</dd>
+          <dt>Item code</dt>
+          <dd class="mono">
+            <span id="dmItemCodeView">${escapeHtml(r.item_code)}${isHistory ? "" : ` <button class="btn sm tag" type="button" id="dmEditCode" title="Edit item code"><span class="mi" style="font-size:14px">edit</span></button>`}</span>
+            ${isHistory ? "" : `<span id="dmItemCodeEdit" style="display:none;gap:8px;align-items:center">
+              <input type="text" id="dmItemCodeInput" style="width:160px" value="${escapeHtml(r.item_code)}">
+              <button class="btn sm primary" type="button" id="dmItemCodeSave">Save</button>
+              <button class="btn sm" type="button" id="dmItemCodeCancel">Cancel</button>
+            </span>`}
+          </dd>
+          <dt>Requestor</dt><dd>${escapeHtml(r.requestor || "—")}</dd>
+          <dt>Date</dt><dd>${escapeHtml(r.created_date || "—")}</dd>
+          <dt>Asset code</dt><dd class="mono">${escapeHtml(r.barcode || "—")}</dd>
+          <dt>Asset description</dt><dd>${escapeHtml(r.asset_desc || "—")}</dd>
+          <dt>Last purchase for asset</dt><dd>${lastPurchaseCell(r)}</dd>
+          <dt>Stock requested</dt><dd>${escapeHtml(r.qty ?? "—")}</dd>
+          <dt>Stock in same state warehouse</dt><dd title="${escapeHtml(sameState.title)}">${escapeHtml(sameState.text)}</dd>
+          <dt>Stock in other state warehouse</dt><dd title="${escapeHtml(otherState.title)}">${escapeHtml(otherState.text)}</dd>
+          ${isHistory ? "" : `<dt>Priority</dt><dd>${renderPriorityToggle()}</dd>`}
+          <dt>${isHistory ? "Outcome" : "Action"}</dt><dd>${isHistory ? renderActionOutcome(r) : renderActionButtons(r)}</dd>
+        </dl>
+        <div style="flex:none">${renderThumbs(r.Images, true)}</div>
+      </div>`;
+    if (!isHistory) {
+      wirePriorityToggles(document.getElementById("dmBody"));
+      const viewEl = document.getElementById("dmItemCodeView");
+      const editEl = document.getElementById("dmItemCodeEdit");
+      const inputEl = document.getElementById("dmItemCodeInput");
+      const editBtn = document.getElementById("dmEditCode");
+      const saveBtn = document.getElementById("dmItemCodeSave");
+      const cancelBtn = document.getElementById("dmItemCodeCancel");
+      if (editBtn) {
+        editBtn.addEventListener("click", () => {
+          viewEl.style.display = "none";
+          editEl.style.display = "inline-flex";
+          inputEl.focus();
+          inputEl.select();
+        });
+      }
+      if (cancelBtn) {
+        cancelBtn.addEventListener("click", () => {
+          editEl.style.display = "none";
+          viewEl.style.display = "";
+        });
+      }
+      if (saveBtn) {
+        saveBtn.addEventListener("click", () => {
+          const trimmed = inputEl.value.trim();
+          if (!trimmed) { alert("Item code can't be empty."); return; }
+          if (trimmed === r.item_code) {
+            editEl.style.display = "none";
+            viewEl.style.display = "";
+            return;
+          }
+          const key = recordKey(r); // stable key was already cached at load
+          r.item_code = trimmed;
+          saveItemCodeOverride(key, trimmed);
+          if (window.CX && CX.toast) CX.toast(`Item code changed to ${trimmed}`);
+          render();
+          openDetailModal(r, context); // refresh the popup (title, item code, etc.)
+        });
+      }
+      if (inputEl) {
+        inputEl.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") saveBtn.click();
+          if (e.key === "Escape") cancelBtn.click();
+        });
+      }
+    }
+    detailModal.classList.add("show");
+  }
+
+  // Reject only makes sense before a decision — the button is only
+  // visible when openDetailModal was opened with context "pending" (see
+  // above). Rejecting removes the record from all three tabs (it's the
+  // same underlying record everywhere, just viewed differently) for the
+  // rest of this browser session.
+  rejectBtn.addEventListener("click", () => {
+    if (!currentDetailRecord) return;
+    const remark = prompt("Reason for rejecting this request:");
+    if (remark === null) return; // cancelled
+    if (!remark.trim()) {
+      alert("A remark is required to reject a request.");
+      return;
+    }
+    rejectRecord(currentDetailRecord, remark.trim());
+    detailModal.classList.remove("show");
+    const msg = `Rejected ${currentDetailRecord.item_code} — ${remark.trim()}`;
+    (window.CX && CX.toast) ? CX.toast(msg) : alert(msg);
+    render();
+  });
+
+  function render() {
+    renderPendingTab();
+    renderApprovedTabs();
+  }
+  fState.addEventListener("change", render);
+
+  // Stored snapshot (assets/mock-data.js), not a live fetch — captured once
+  // from the real Cyrix API + SAP stock check, so the page renders
+  // instantly instead of waiting ~30-40s for a live scan on every load.
+  function load() {
+    const raw = (window.CX_MOCK && window.CX_MOCK.approved) || [];
+    const overrides = itemCodeOverrides();
+    raw.forEach((r) => {
+      const key = recordKey(r); // cache the pristine stable key before applying any override
+      if (overrides[key]) r.item_code = overrides[key];
+    });
+    // date filter (default: last 1 month)
+    allApproved = raw.filter((r) => range.contains(r.created_date));
+    if (raw.length === 0) {
+      statusEl.textContent = "No stored data found — assets/mock-data.js didn't load.";
+      statusEl.classList.add("bad");
+      statusEl.style.display = "block";
+      return;
+    }
+    statusEl.style.display = "none";
+    populateStateFilter();
+    render();
+  }
+  document.getElementById("refresh").addEventListener("click", load);
+
+  load();
+</script>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

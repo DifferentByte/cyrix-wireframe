@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open POs & Delivery</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Orders · Handbook §15, §23</div>
+      <h1>Open POs & delivery tracking</h1>
+      <p class="sub">Every open PO, with automatic vendor follow-up starting on day 2. Dispatch and tracking details are pulled from vendor emails where possible.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" data-toast="Reminders sent to 6 overdue vendors">Remind all overdue</button>
+    </div>
+  </div>
+
+  <div class="grid g6">
+    <div class="card kpi"><div class="l">Open</div><div class="v">38</div></div>
+    <div class="card kpi"><div class="l">Awaiting dispatch</div><div class="v">14</div></div>
+    <div class="card kpi"><div class="l">In transit</div><div class="v">9</div></div>
+    <div class="card kpi"><div class="l">Overdue</div><div class="v down">6</div></div>
+    <div class="card kpi"><div class="l">GRN pending</div><div class="v">5</div></div>
+    <div class="card kpi"><div class="l">Open value</div><div class="v">₹31.4 L</div></div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>Open PO dashboard</h2>
+      <div class="tag row"><input placeholder="PO / vendor / item" style="width:200px"><select style="width:auto"><option>All statuses</option><option>Overdue</option><option>In transit</option><option>GRN pending</option></select></div>
+    </div>
+    <div class="table-wrap"><table class="t">
+      <thead><tr><th>PO</th><th>Vendor</th><th>PO date</th><th>Item / service</th><th class="num">Qty</th><th class="num">Value</th><th>Promised</th><th class="num">Delay</th><th>Payment</th><th>Dispatch</th><th>GRN</th><th>Invoice</th><th>Closure</th></tr></thead>
+      <tbody id="rows">
+        <tr data-po="3190"><td class="mono">PO-26-3190</td><td>Delta Surgicals</td><td>11 Sep</td><td>Infusion pump battery</td><td class="num">12</td><td class="num">₹86,400</td><td>18 Sep</td><td class="num worst">12 d</td><td><span class="badge good">Adv. paid</span></td><td><span class="badge bad">Not dispatched</span></td><td>—</td><td>—</td><td><span class="badge">Open</span></td></tr>
+        <tr data-po="3221" class="sel"><td class="mono">PO-26-3221</td><td>Aarav Healthcare</td><td>15 Sep</td><td>SpO₂ sensor adult</td><td class="num">20</td><td class="num">₹64,000</td><td>22 Sep</td><td class="num worst">8 d</td><td><span class="badge">Credit</span></td><td><span class="badge bad">No response</span></td><td>—</td><td>—</td><td><span class="badge">Open</span></td></tr>
+        <tr data-po="3254"><td class="mono">PO-26-3254</td><td>Kovai Medical Tech</td><td>20 Sep</td><td>NIBP cuff adult</td><td class="num">30</td><td class="num">₹39,900</td><td>26 Sep</td><td class="num">4 d</td><td><span class="badge">Credit</span></td><td><span class="badge info">In transit</span></td><td>—</td><td>—</td><td><span class="badge">Open</span></td></tr>
+        <tr data-po="3312"><td class="mono">PO-26-3312</td><td>MedServe Biomedical</td><td>27 Sep</td><td>O₂ sensor cell</td><td class="num">2</td><td class="num">₹85,000</td><td>2 Oct</td><td class="num">—</td><td><span class="badge good">Adv. paid</span></td><td><span class="badge info">Dispatched</span></td><td>—</td><td>—</td><td><span class="badge">Open</span></td></tr>
+        <tr data-po="3298"><td class="mono">PO-26-3298</td><td>Kovai Medical Tech</td><td>18 Sep</td><td>ECG leads 5-wire</td><td class="num">15</td><td class="num">₹1,18,000</td><td>25 Sep</td><td class="num">—</td><td><span class="badge good">Paid</span></td><td><span class="badge good">Delivered</span></td><td><span class="badge warn">Pending</span></td><td><span class="badge good">Captured</span></td><td><span class="badge">Open</span></td></tr>
+        <tr data-po="3270"><td class="mono">PO-26-3270</td><td>Siemens Healthineers</td><td>24 Sep</td><td>CMC Somatom CT</td><td class="num">1</td><td class="num">₹11,80,000</td><td>1 Oct</td><td class="num">—</td><td><span class="badge good">Adv. paid</span></td><td>n/a</td><td>n/a</td><td><span class="badge warn">Awaited</span></td><td><span class="badge">Open</span></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="grid g2 mt">
+    <div class="card">
+      <div class="card-h"><h2>PO-26-3221 · tracking</h2><span class="badge bad tag">8 days late</span></div>
+      <div class="card-b grid g2">
+        <dl class="kv">
+          <dt>PO date</dt><dd>15 Sep 2026</dd>
+          <dt>Promised</dt><dd>22 Sep 2026</dd>
+          <dt>Dispatch date</dt><dd>—</dd>
+          <dt>Courier</dt><dd>—</dd>
+          <dt>Tracking no.</dt><dd>—</dd>
+          <dt>Expected</dt><dd>—</dd>
+          <dt>Actual</dt><dd>—</dd>
+          <dt>Delay days</dt><dd class="down">8</dd>
+        </dl>
+        <div>
+          <div class="field"><label>Log vendor response</label><textarea placeholder="e.g. Dispatch on 2 Oct via Blue Dart"></textarea></div>
+          <div class="row mt-s"><button class="btn sm" data-toast="Escalated to Purchase Manager">Escalate</button><button class="btn sm primary" data-toast="Reminder sent to Aarav Healthcare">Send reminder now</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Follow-up log</h2><span class="badge ai tag">Automatic</span></div>
+      <div class="card-b">
+        <ul class="tl">
+          <li class="done"><b>PO issued</b> and emailed to vendor<div class="when">15 Sep, 16:40</div></li>
+          <li class="done"><b>Auto reminder #1</b> (day 2): confirm dispatch date<div class="when">17 Sep, 10:00 · Reply: “Will dispatch by 20 Sep”</div></li>
+          <li class="done"><b>Auto reminder #2</b>: promised date approaching<div class="when">21 Sep, 10:00 · no reply</div></li>
+          <li class="bad"><b>Overdue reminder #3</b><div class="when">24 Sep, 10:00 · no reply</div></li>
+          <li class="now"><b>Next:</b> escalation to Purchase Manager<div class="when">1 Oct, 10:00</div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+<script>
+document.getElementById("rows").addEventListener("click", function(e){
+  var tr = e.target.closest("tr"); if(!tr) return;
+  document.querySelectorAll("#rows tr").forEach(function(x){ x.classList.toggle("sel", x===tr); });
+});
+</script>
+</body>
+</html>

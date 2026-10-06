@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Item Creation</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Sourcing · Item Creation</div>
+      <h1>Create a new SAP item</h1>
+      <p class="sub">For spares that don't have an SAP item code yet — the same gap Approval flags as "new item creation". Fill this in once, then the code is selectable normally from Manual PR.</p>
+    </div>
+  </div>
+
+  <div class="alert info">This form doesn't post to SAP yet — items created here are a prototype preview, kept only for this browser session.</div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>1. Item details</h2></div>
+    <div class="card-b stack">
+      <div class="form f3">
+        <div class="field">
+          <label for="icState">State <span class="req">*</span></label>
+          <select id="icState"></select>
+        </div>
+        <div class="field full">
+          <label for="icDesc">Item description <span class="req">*</span></label>
+          <input type="text" id="icDesc" placeholder="e.g. O2 sensor cell, Mindray SV300 (compatible)">
+        </div>
+        <div class="field">
+          <label for="icGroup">Item group</label>
+          <select id="icGroup">
+            <option>Spares</option>
+            <option>Consumables</option>
+            <option>Capital equipment</option>
+            <option>Accessories</option>
+            <option>Services</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="icUom">UoM</label>
+          <select id="icUom">
+            <option>Nos</option>
+            <option>Set</option>
+            <option>Box</option>
+            <option>Pair</option>
+            <option>Meter</option>
+            <option>Job</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="icHsn">HSN / SAC code</label>
+          <input type="text" id="icHsn" placeholder="Optional">
+        </div>
+        <div class="field full">
+          <label for="icRefPi">Reference PI ID</label>
+          <input type="text" id="icRefPi" list="icPiList" placeholder="Optional — the PI that needs this item" autocomplete="off">
+          <datalist id="icPiList"></datalist>
+          <div class="hint">Links this new code back to the request that needed it, where known.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-f">
+      <button class="btn primary" type="button" id="icSubmit">Create item</button>
+    </div>
+  </div>
+
+  <div id="icSuccess" class="alert good mt" style="display:none"></div>
+
+  <div class="card mt">
+    <div class="card-h"><h2>Items created this session</h2></div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th>Item code</th><th>Description</th><th>State</th><th>Group</th><th>UoM</th><th>Ref. PI</th><th>HSN/SAC</th><th>Created</th></tr></thead>
+        <tbody id="icRows"><tr><td colspan="8" class="muted">None yet.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script src="assets/mock-data.js"></script>
+<script>
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+    );
+  }
+
+  function realStates() {
+    const fromPool = ((window.CX_MOCK && window.CX_MOCK.poolStatus && window.CX_MOCK.poolStatus.sources) || [])
+      .map((s) => s.source_name);
+    const fromCalls = ((window.CX_MOCK && window.CX_MOCK.calls) || []).map((r) => r.state);
+    return [...new Set([...fromPool, ...fromCalls])].filter(Boolean).sort();
+  }
+
+  function realPIs() {
+    const calls = (window.CX_MOCK && window.CX_MOCK.calls) || [];
+    const byId = new Map();
+    for (const r of calls) if (r.id && !byId.has(r.id)) byId.set(r.id, r);
+    return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  const MANUAL_ITEMS_KEY = "cx_manual_items_v1";
+  function manualItems() {
+    try { return JSON.parse(sessionStorage.getItem(MANUAL_ITEMS_KEY) || "[]"); } catch (_) { return []; }
+  }
+  function saveManualItem(item) {
+    const list = manualItems();
+    list.unshift(item);
+    try { sessionStorage.setItem(MANUAL_ITEMS_KEY, JSON.stringify(list)); } catch (_) {}
+  }
+
+  // All real item codes already in use (approved records + vendor history),
+  // so a newly generated code can't collide with one that actually exists.
+  function existingItemCodes() {
+    const codes = new Set();
+    for (const r of (window.CX_MOCK && window.CX_MOCK.approved) || []) if (r.item_code) codes.add(r.item_code);
+    for (const c of Object.keys((window.CX_MOCK && window.CX_MOCK.vendorHistory) || {})) codes.add(c);
+    for (const i of manualItems()) codes.add(i.item_code);
+    return codes;
+  }
+  function generateItemCode() {
+    const used = existingItemCodes();
+    let code;
+    do {
+      code = "NEW-" + String(Math.floor(100000 + Math.random() * 900000));
+    } while (used.has(code));
+    return code;
+  }
+
+  function populateStates() {
+    document.getElementById("icState").innerHTML = realStates()
+      .map((s) => `<option value="${esc(s)}">${esc(s)}</option>`)
+      .join("");
+  }
+  function populatePIs() {
+    document.getElementById("icPiList").innerHTML = realPIs()
+      .map((r) => `<option value="${esc(r.id)}">${esc(r.desc || "")}</option>`)
+      .join("");
+  }
+
+  function renderItems() {
+    const list = manualItems();
+    const body = document.getElementById("icRows");
+    if (list.length === 0) {
+      body.innerHTML = '<tr><td colspan="8" class="muted">None yet.</td></tr>';
+      return;
+    }
+    body.innerHTML = list
+      .map((i) => `<tr>
+          <td class="mono">${esc(i.item_code)}</td>
+          <td>${esc(i.item_desc)}</td>
+          <td>${esc(i.state)}</td>
+          <td>${esc(i.item_group)}</td>
+          <td>${esc(i.uom)}</td>
+          <td class="mono">${esc(i.ref_pi || "—")}</td>
+          <td class="mono">${esc(i.hsn || "—")}</td>
+          <td class="small muted">${esc(i.created_at)}</td>
+        </tr>`)
+      .join("");
+  }
+
+  document.getElementById("icSubmit").addEventListener("click", () => {
+    const state = document.getElementById("icState").value;
+    const desc = document.getElementById("icDesc").value.trim();
+    const group = document.getElementById("icGroup").value;
+    const uom = document.getElementById("icUom").value;
+    const hsn = document.getElementById("icHsn").value.trim();
+    const refPi = document.getElementById("icRefPi").value.trim();
+
+    if (!desc) { alert("Item description is required."); return; }
+
+    const itemCode = generateItemCode();
+    saveManualItem({
+      item_code: itemCode, item_desc: desc, state, item_group: group, uom,
+      ref_pi: refPi, hsn,
+      created_at: new Date().toLocaleString("en-IN"),
+    });
+
+    const successEl = document.getElementById("icSuccess");
+    successEl.innerHTML = `<b>${esc(itemCode)}</b> created for "${esc(desc)}". <a href="manual-pr.html?item_code=${encodeURIComponent(itemCode)}">Use this item code in a Manual PR →</a>`;
+    successEl.style.display = "block";
+    if (window.CX && CX.toast) CX.toast(`Item ${itemCode} created`);
+
+    document.getElementById("icDesc").value = "";
+    document.getElementById("icHsn").value = "";
+    document.getElementById("icRefPi").value = "";
+    renderItems();
+  });
+
+  populateStates();
+  populatePIs();
+  renderItems();
+</script>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quotation</title>
+<link rel="icon" href="assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="assets/cyrix-ui.css">
+</head>
+<body>
+<main class="content">
+  <div class="page-head">
+    <div>
+      <div class="crumb">Sourcing · Quotation</div>
+      <h1>Quotation</h1>
+      <p class="sub">Raise a rate request for a specific part, or review quotations already raised.</p>
+    </div>
+    <div class="actions"><div id="range"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="tabs" data-tabs="q">
+      <button class="on" data-tab="raise">Raise quotation</button>
+      <button data-tab="list">Raised quotations</button>
+    </div>
+
+    <!-- Raise quotation -->
+    <div class="tab-panel on card-b" data-panel="q:raise">
+      <div class="field">
+        <label for="itemPick">Item code</label>
+        <input type="text" id="itemPick" list="itemCodeList" placeholder="Type an item code, e.g. I-102428" autocomplete="off">
+        <datalist id="itemCodeList"></datalist>
+      </div>
+      <div id="itemPreview" class="row mt" style="gap:14px;align-items:center;display:none">
+        <div class="img" data-part="component" id="itemImg" style="width:64px;height:64px;flex:none"></div>
+        <div>
+          <div style="font-weight:650" id="itemDescOut"></div>
+          <div class="muted small" id="itemMetaOut"></div>
+        </div>
+      </div>
+      <div id="itemNotFound" style="display:none">
+        <div class="alert warn mt">No stored record for that item code — enter a description and raise the quotation anyway. It'll go straight to Raised quotations awaiting a manual reply, since there's no history to auto-match against.</div>
+        <div class="field mt">
+          <label for="manualDesc">Description</label>
+          <input type="text" id="manualDesc" placeholder="What is this part?">
+        </div>
+      </div>
+      <div class="card-f" style="padding-left:0;padding-right:0">
+        <button class="btn primary" id="raiseBtn" type="button" disabled>Raise quotation</button>
+      </div>
+      <div id="raiseResult" class="mt"></div>
+    </div>
+
+    <!-- Raised quotations -->
+    <div class="tab-panel card-b" data-panel="q:list">
+      <div class="table-wrap">
+        <table class="t">
+          <thead><tr><th>Item code</th><th>Description</th><th>Vendor</th><th>Status</th><th class="num">Rate</th><th>Raised</th><th></th></tr></thead>
+          <tbody id="listRows"><tr><td colspan="7" class="muted">No quotations raised in this date range.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="assets/mock-data.js"></script>
+<script src="assets/cyrix-range.js"></script>
+<script>
+  const API = new URLSearchParams(location.search).get("api") || "http://127.0.0.1:8000";
+  const STORE_KEY = "cx_quotations_v1";
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+    );
+  }
+
+  // Portal thumbnails are served through API proxies, which add the
+  // required Referer and User-Agent headers before fetching each image —
+  // same helper as Approval/Purchase. Needs the live API running; if it
+  // isn't, the image just fails to load (onerror hides it) rather than
+  // breaking the page.
+  function attachmentImageUrl(url) {
+    try {
+      const parsed = new URL(url, window.location.href);
+      if (parsed.hostname.toLowerCase() === "apcyrixbemp.com" && parsed.pathname.startsWith("/setups/item_img/")) {
+        return `${API.replace(/\/$/, "")}/ap-image?url=${encodeURIComponent(parsed.href)}`;
+      }
+      if (parsed.hostname.toLowerCase() === "rmsclcyrix.mobilisepro.com" && parsed.pathname.startsWith("/scm/scm_files/")) {
+        return `${API.replace(/\/$/, "")}/rj-image?url=${encodeURIComponent(parsed.href)}`;
+      }
+      if (parsed.hostname.toLowerCase() === "cyrixbemp.com" && parsed.pathname.startsWith("/scm/scm_files/")) {
+        return `${API.replace(/\/$/, "")}/kerala-image?url=${encodeURIComponent(parsed.href)}`;
+      }
+    } catch (_) {}
+    return url;
+  }
+
+  function loadQuotations() {
+    try { return JSON.parse(sessionStorage.getItem(STORE_KEY) || "[]"); } catch (_) { return []; }
+  }
+  function saveQuotations(list) {
+    try { sessionStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch (_) {}
+  }
+
+  // Date filter (default: last 1 month) applies to the "Raised quotations" list.
+  const range = CXR.create(document.getElementById("range"), () => renderList());
+
+  function renderList() {
+    const list = loadQuotations().filter((q) => !q.at || range.contains(new Date(q.at)));
+    const rowsEl = document.getElementById("listRows");
+    if (list.length === 0) {
+      rowsEl.innerHTML = '<tr><td colspan="7" class="muted">No quotations raised yet this session.</td></tr>';
+      return;
+    }
+    rowsEl.innerHTML = list
+      .slice()
+      .reverse()
+      .map((q) => {
+        const statusBadge = q.replied
+          ? `<span class="badge good">Replied</span>`
+          : `<span class="badge warn">Awaiting vendor</span>`;
+        const action = q.replied
+          ? ""
+          : `<button class="btn sm" type="button" data-reply-id="${esc(q.id)}">Enter rate</button>`;
+        return `<tr>
+          <td class="mono">${esc(q.itemCode)}</td>
+          <td>${esc(q.itemDesc)}</td>
+          <td>${esc(q.vendor)}</td>
+          <td>${statusBadge}</td>
+          <td class="num">${q.replied ? "₹" + q.rate.toLocaleString("en-IN") : "—"}</td>
+          <td class="muted">${esc(q.raisedAt)}</td>
+          <td>${action}</td>
+        </tr>`;
+      })
+      .join("");
+
+    rowsEl.querySelectorAll("[data-reply-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-reply-id");
+        const raw = prompt("Vendor's quoted rate (₹):");
+        if (raw === null) return;
+        const rate = Number(raw.trim());
+        if (!Number.isFinite(rate) || rate <= 0) {
+          alert("Enter a valid rate.");
+          return;
+        }
+        let vendorName = null;
+        const current = loadQuotations();
+        const updated = current.map((q) => {
+          if (q.id !== id) return q;
+          vendorName = q.vendor && q.vendor !== "—" ? q.vendor : prompt("Vendor name:") || "Vendor";
+          return { ...q, replied: true, rate, vendor: vendorName };
+        });
+        saveQuotations(updated);
+        renderList();
+      });
+    });
+  }
+
+  // ---------- Raise quotation: type an item code, description comes from
+  // a stored snapshot (assets/mock-data.js) rather than a live fetch —
+  // same ~30-40s stock-check cost as Approval/Purchase otherwise. No
+  // vendor picker: raising auto-matches SAP's purchase history for that
+  // item and replies with the most recent rate on file, or marks it
+  // awaiting a vendor response if there's no prior record.
+  let approvedRecords = [];
+  function loadItems() {
+    const datalist = document.getElementById("itemCodeList");
+    const all = (window.CX_MOCK && window.CX_MOCK.approved) || [];
+    const byCode = new Map();
+    for (const r of all) {
+      if (r.item_code && !byCode.has(r.item_code)) byCode.set(r.item_code, r);
+    }
+    approvedRecords = [...byCode.values()].sort((a, b) => a.item_code.localeCompare(b.item_code));
+    datalist.innerHTML = approvedRecords
+      .map((r) => `<option value="${esc(r.item_code)}">${esc(r.item_desc || "")}</option>`)
+      .join("");
+  }
+
+  const itemInput = document.getElementById("itemPick");
+  const itemPreview = document.getElementById("itemPreview");
+  const itemNotFound = document.getElementById("itemNotFound");
+  const raiseBtn = document.getElementById("raiseBtn");
+
+  const manualDesc = document.getElementById("manualDesc");
+
+  function lookupItem() {
+    const code = itemInput.value.trim();
+    document.getElementById("raiseResult").innerHTML = "";
+    itemPreview.style.display = "none";
+    itemNotFound.style.display = "none";
+    manualDesc.value = "";
+    raiseBtn.disabled = true;
+    if (!code) return;
+
+    const rec = approvedRecords.find((r) => r.item_code.toLowerCase() === code.toLowerCase());
+    if (!rec) {
+      // Unknown code — no stored record to auto-fill from, so ask for a
+      // description instead of blocking the request entirely.
+      itemNotFound.style.display = "block";
+      raiseBtn.disabled = true;
+      return;
+    }
+    document.getElementById("itemDescOut").textContent = rec.item_desc || rec.item_code;
+    document.getElementById("itemMetaOut").textContent = `${rec.state || ""} · qty ${rec.qty ?? "—"}`;
+    const img = document.getElementById("itemImg");
+    img.innerHTML = "";
+    if (rec.Images?.length) {
+      const i = document.createElement("img");
+      i.src = attachmentImageUrl(rec.Images[0]);
+      i.style.cssText = "width:100%;height:100%;object-fit:cover;border-radius:inherit";
+      i.onerror = () => { img.innerHTML = ""; };
+      img.appendChild(i);
+    }
+    itemPreview.style.display = "flex";
+    raiseBtn.disabled = false;
+  }
+  itemInput.addEventListener("input", lookupItem);
+  manualDesc.addEventListener("input", () => {
+    raiseBtn.disabled = itemNotFound.style.display !== "none" && !manualDesc.value.trim();
+  });
+
+  raiseBtn.addEventListener("click", () => {
+    const code = itemInput.value.trim();
+    if (!code) return;
+    const rec = approvedRecords.find((r) => r.item_code.toLowerCase() === code.toLowerCase());
+
+    let entry;
+    if (rec) {
+      // Auto-match: most recent vendor in SAP's purchase history for this
+      // item — "the rate will be replied automatically if the item is
+      // already there". No history → awaiting a manual vendor response.
+      const history = (window.CX_MOCK && window.CX_MOCK.vendorHistory && window.CX_MOCK.vendorHistory[rec.item_code]) || [];
+      const withRate = history.filter((v) => v.price !== null && v.price !== undefined && v.price !== "");
+      const best = withRate.slice().sort((a, b) => (b.doc_date || "").localeCompare(a.doc_date || ""))[0];
+      entry = {
+        itemCode: rec.item_code,
+        itemDesc: rec.item_desc || "",
+        vendor: best ? best.vendor_name : "—",
+        replied: !!best,
+        rate: best ? Number(best.price) : null,
+      };
+    } else {
+      // Unknown item code — no history exists to auto-match against, so
+      // this always goes straight to Raised quotations awaiting a manual
+      // reply, using the description the person typed in.
+      const desc = manualDesc.value.trim();
+      if (!desc) return;
+      entry = { itemCode: code, itemDesc: desc, vendor: "—", replied: false, rate: null };
+    }
+    entry.id = Date.now() + "-" + Math.random().toString(36).slice(2);
+    entry.at = Date.now();
+    entry.raisedAt = new Date().toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+
+    const list = loadQuotations();
+    list.push(entry);
+    saveQuotations(list);
+    renderList();
+
+    const resultHtml = entry.replied
+      ? `<div class="alert good"><b>Rate on file.</b> ${esc(entry.vendor)} quoted ₹${entry.rate.toLocaleString("en-IN")} for ${esc(entry.itemCode)} (from SAP's purchase history).</div>`
+      : `<div class="alert warn"><b>Quotation sent.</b> No prior rate on file for ${esc(entry.itemCode)} — waiting for a vendor to respond. Check the Raised quotations tab for updates.</div>`;
+
+    // Reset the form after raising — otherwise the "no stored record"
+    // guidance banner stayed visible alongside this result, showing two
+    // stacked alerts for one action.
+    itemInput.value = "";
+    manualDesc.value = "";
+    itemPreview.style.display = "none";
+    itemNotFound.style.display = "none";
+    raiseBtn.disabled = true;
+    document.getElementById("raiseResult").innerHTML = resultHtml;
+  });
+
+  renderList();
+  loadItems();
+</script>
+<script src="assets/config.js"></script>
+<script src="assets/cyrix-shell.js"></script>
+</body>
+</html>

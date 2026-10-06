@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teams</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb">Super Admin · Teams & workload</div>
+      <h1>Teams</h1>
+      <p class="sub">Group employees into teams. Every Purchase Indent (PI) is assigned to a person, so you can see what is pending per employee and per team.</p>
+    </div>
+    <div class="actions">
+      <button class="btn primary" data-open="newTeam" type="button"><span class="mi">group_add</span>Create team</button>
+    </div>
+  </div>
+
+  <div class="grid g3" id="cards"></div>
+
+  <div class="modal-bg" id="newTeam">
+    <div class="modal" style="width:min(520px,100%)">
+      <div class="card-h"><h2>Create team</h2><button class="btn sm tag" data-close type="button">✕</button></div>
+      <div class="card-b">
+        <div class="form">
+          <div class="field full"><label>Team name <span class="req">*</span></label><input placeholder="e.g. Vendor Development"></div>
+          <div class="field full"><label>Description</label><textarea rows="2" placeholder="What does this team handle?"></textarea></div>
+          <div class="field"><label>Team lead</label><select id="leadPick"></select></div>
+          <div class="field"><label>PI assignment</label>
+            <select><option>Auto (round-robin)</option><option>By zone</option><option>Manual only</option></select></div>
+          <div class="field full"><label>Members</label><div class="zones" id="memberPick"></div></div>
+        </div>
+      </div>
+      <div class="card-f"><button class="btn" data-close type="button">Cancel</button>
+        <button class="btn primary" data-close data-toast="Team created (demo — nothing stored)" type="button">Create team</button></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  document.getElementById("cards").innerHTML = SA.TEAMS.map(function (t) {
+    var s = SA.teamStats(t.id), lead = SA.emp(t.lead), pct = s.assigned ? s.approved / s.assigned * 100 : 0;
+    return '<a class="card role-card" href="team-detail.html?team=' + t.id + '">' +
+      '<div class="row between"><div class="rc-ic"><span class="mi">' + t.icon + '</span></div><span class="badge">' + s.members + " members</span></div>" +
+      "<h3>" + t.name + "</h3><p>" + t.desc + "</p>" +
+      '<div class="team-stats"><div><b>' + s.assigned + "</b><span>Assigned</span></div><div><b>" + s.approved + "</b><span>Approved</span></div><div><b" + (s.overdue ? ' style="color:var(--danger)"' : "") + ">" + s.pending + "</b><span>Pending</span></div></div>" +
+      '<div class="wbar"><i class="ok" style="width:' + pct + '%"></i><i class="pend" style="width:' + (100 - pct) + '%"></i></div>' +
+      '<div class="small faint">Lead · ' + lead.name + (s.overdue ? ' · <span style="color:var(--danger)">' + s.overdue + " overdue</span>" : "") + "</div></a>";
+  }).join("");
+  document.getElementById("leadPick").innerHTML = SA.EMPLOYEES.map(function (e) { return "<option>" + e.name + "</option>"; }).join("");
+  document.getElementById("memberPick").innerHTML = SA.EMPLOYEES.slice(0, 12).map(function (e) { return '<label><input type="checkbox"> ' + e.name + "</label>"; }).join("");
+</script>
+</body>
+</html>

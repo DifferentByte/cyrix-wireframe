@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edit employee</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content">
+
+  <div class="page-head">
+    <div>
+      <div class="crumb"><a href="employees.html">Employees</a> · <span id="crumb">New</span></div>
+      <h1 id="title">Add employee</h1>
+      <p class="sub">Pick a role to give the employee its default access, then add or remove single modules if this person is an exception.</p>
+    </div>
+    <div class="actions">
+      <a class="btn" href="employees.html">Cancel</a>
+      <button class="btn primary" id="save" type="button"><span class="mi">save</span>Save employee</button>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Details</h2></div>
+        <div class="card-b">
+          <div class="form">
+            <div class="field"><label>Full name <span class="req">*</span></label><input id="name" placeholder="e.g. Anita Joseph"></div>
+            <div class="field"><label>Work email <span class="req">*</span></label><input id="email" placeholder="name@cyrix.in"></div>
+            <div class="field"><label>Phone</label><input id="phone" placeholder="+91 …"></div>
+            <div class="field"><label>Status</label>
+              <select id="status"><option value="active">Active</option><option value="invited">Invited (hasn't signed in)</option><option value="inactive">Inactive (cannot sign in)</option></select></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Role & zones</h2></div>
+        <div class="card-b">
+          <div class="form">
+            <div class="field full"><label>Team</label><select id="team"></select>
+              <div class="hint">PIs are routed to employees and rolled up per team.</div></div>
+            <div class="field full"><label>Role <span class="req">*</span></label><select id="role"></select>
+              <div class="hint" id="roleDesc"></div></div>
+            <div class="field full"><label>Zones this person can see</label>
+              <div class="zones" id="zones"></div>
+              <div class="hint">Defaults to the role's zone scope. Untick to narrow it for this person.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Per-person overrides</h2><span class="badge" id="ovBadge">None</span></div>
+        <div class="card-b">
+          <p class="small muted" style="margin-top:0">Modules from the role are on by default. Switch one off to hide it from this person, or switch on an extra one the role doesn't include. Actions (create, edit…) follow the role; extra modules get <b>View</b> only.</p>
+          <div class="table-wrap">
+            <table class="t"><thead><tr><th>Module</th><th>From role</th><th>Access for this person</th></tr></thead><tbody id="ov"></tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h2>Sidebar this person will see</h2></div>
+        <div class="card-b"><div id="prev"></div>
+          <div class="row mt-s"><a class="btn sm" id="viewAs" href="role-view.html">Preview full role view</a></div></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>Sign-in</h2></div>
+        <div class="card-b stack" style="gap:10px">
+          <label class="check"><input type="checkbox" checked> Send invite email on save</label>
+          <label class="check"><input type="checkbox"> Require password reset at next login</label>
+          <button class="btn sm" data-toast="Password reset link sent (demo)" type="button">Send password reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var emp = SA.emp(SA.param("id"));
+  var st = { role: emp ? emp.role : SA.ROLES[0].id, on: {}, zones: [] };
+
+  $("team").innerHTML = '<option value="">Unassigned</option>' + SA.TEAMS.map(function (t) { return '<option value="' + t.id + '">' + t.name + "</option>"; }).join("");
+  if (emp) $("team").value = emp.team || "";
+  $("role").innerHTML = SA.ROLES.map(function (r) { return '<option value="' + r.id + '">' + r.name + "</option>"; }).join("");
+  $("zones").innerHTML = SA.ZONES.map(function (z) { return '<label><input type="checkbox" value="' + z + '"> ' + z + "</label>"; }).join("");
+
+  function loadRole(keepOverrides) {
+    var r = SA.role(st.role), base = Object.keys(r.perms);
+    $("roleDesc").textContent = r.desc;
+    st.on = {};
+    SA.MODS.forEach(function (m) { st.on[m.id] = base.indexOf(m.id) >= 0; });
+    if (keepOverrides && emp) {
+      (emp.grant || []).forEach(function (m) { st.on[m] = true; });
+      (emp.revoke || []).forEach(function (m) { st.on[m] = false; });
+    }
+    var zs = emp && keepOverrides ? emp.zones : r.zones;
+    document.querySelectorAll("#zones input").forEach(function (c) { c.checked = zs === "all" || zs.indexOf(c.value) >= 0; });
+    draw();
+  }
+
+  function draw() {
+    var r = SA.role(st.role), base = Object.keys(r.perms), changes = 0;
+    $("ov").innerHTML = SA.MODS.map(function (m) {
+      var inRole = base.indexOf(m.id) >= 0, on = st.on[m.id], diff = inRole !== on; if (diff) changes++;
+      return "<tr><td><span class='mi' style='vertical-align:middle;margin-right:8px;color:var(--accent)'>" + m.icon + "</span>" + m.label + "</td>" +
+        "<td>" + (inRole ? '<span class="badge good">Included</span>' : '<span class="badge">Not included</span>') + "</td>" +
+        '<td><div class="row"><label class="sw"><input type="checkbox" data-m="' + m.id + '"' + (on ? " checked" : "") + "><i></i></label>" +
+        (diff ? '<span class="badge warn">' + (on ? "extra" : "hidden") + "</span>" : "") + "</div></td></tr>";
+    }).join("");
+    $("ovBadge").textContent = changes ? changes + " override" + (changes > 1 ? "s" : "") : "None";
+    $("ovBadge").className = "badge" + (changes ? " warn" : "");
+    $("prev").innerHTML = SA.previewHtml(Object.keys(st.on).filter(function (k) { return st.on[k]; }));
+    $("viewAs").href = "role-view.html?role=" + st.role;
+  }
+
+  $("ov").addEventListener("change", function (e) { st.on[e.target.getAttribute("data-m")] = e.target.checked; draw(); });
+  $("role").addEventListener("change", function () { st.role = $("role").value; loadRole(false); });
+  $("save").addEventListener("click", function () {
+    if (!$("name").value || !$("email").value) { CX.toast("Name and email are required"); return; }
+    CX.toast("Employee saved (demo — nothing stored)");
+  });
+
+  if (emp) {
+    $("title").textContent = "Edit " + emp.name; $("crumb").textContent = emp.name;
+    $("name").value = emp.name; $("email").value = emp.email; $("phone").value = emp.phone; $("status").value = emp.status;
+  }
+  $("role").value = st.role;
+  loadRole(true);
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quotation</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content" id="app"></main>
+
+<script src="../assets/cyrix-range.js"></script>
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script src="sa-monitor.js"></script>
+<script>
+  var best = function (r) { return r.quotes.length ? Math.min.apply(null, r.quotes.map(function (q) { return q.price; })) : 0; };
+  SAM.render({
+    dates: true, kind: "quotations", title: "Quotation", sub: "Vendor quotations for every request. Compare them, pick the vendor yourself, or approve the one the team chose.",
+    statuses: ["Awaiting quotes", "Comparing", "Vendor selected", "Approved"], tone: { "Awaiting quotes": "warn", Comparing: "info", "Vendor selected": "info", Approved: "good" },
+    rank: function (r) { return { Comparing: 3, "Vendor selected": 2, "Awaiting quotes": 1, Approved: 0 }[r.status]; },
+    cols: [
+      { label: "Quotation", fmt: function (r) { return '<span class="mono">' + r.id + "</span>"; } },
+      { label: "PI", fmt: function (r) { return '<span class="mono">' + r.pi + "</span>"; } },
+      { label: "Item", fmt: function (r) { return r.item + ' <span class="faint">× ' + r.qty + "</span>"; } },
+      { label: "Quotes", num: true, fmt: function (r) { return r.quotes.length; } },
+      { label: "Best price", num: true, fmt: function (r, m) { return r.quotes.length ? m(best(r)) : "—"; } },
+      { label: "Vendor", fmt: function (r) { return r.vendor || '<span class="faint">not chosen</span>'; } }
+    ],
+    kpis: function (rows) {
+      var c = function (s) { return rows.filter(function (r) { return r.status === s; }).length; };
+      return [["Awaiting quotes", c("Awaiting quotes"), "vendors yet to reply", "hourglass_top"], ["Ready to compare", c("Comparing"), "quotes received", "request_quote"], ["Vendor selected", c("Vendor selected"), "awaiting approval", "how_to_reg"], ["Approved", c("Approved"), "go to PO", "task_alt"]];
+    },
+    actions: function (r) {
+      var a = [];
+      if (r.status === "Comparing" || r.status === "Vendor selected") a.push({ id: "compare", label: r.status === "Comparing" ? "Compare & select" : "Change vendor", modal: function (r) {
+        var lo = best(r);
+        return { title: "Compare quotations · " + r.id, confirm: function (r) {
+            var v = document.querySelector('input[name="qv"]:checked').value; r.vendor = v; r.status = "Vendor selected"; return r.id + ": selected " + v + " (Super Admin)"; },
+          html: '<p class="small muted" style="margin-top:0">' + r.item + " × " + r.qty + " · PI " + r.pi + '</p><table class="t"><thead><tr><th></th><th>Vendor</th><th class="num">Price</th><th class="num">Lead time</th></tr></thead><tbody>' +
+            r.quotes.map(function (q, i) { return '<tr><td><input type="radio" name="qv" value="' + q.vendor + '"' + ((r.vendor ? r.vendor === q.vendor : q.price === lo) ? " checked" : "") + '></td><td>' + q.vendor +
+              (q.price === lo ? ' <span class="badge good">lowest</span>' : "") + '</td><td class="num">' + CX.inr(q.price) + '</td><td class="num">' + q.days + " d</td></tr>"; }).join("") + "</tbody></table>" };
+      } });
+      if (r.status === "Vendor selected") a.push({ id: "approve", label: "Approve", cls: "good", run: function (r) { r.status = "Approved"; return "Approved " + r.id + " with " + r.vendor + " (Super Admin override)"; } });
+      if (r.status === "Awaiting quotes") a.push({ id: "nudge", label: "Nudge vendors", run: function (r) { return "Reminder sent to vendors for " + r.id; } });
+      if (r.status !== "Approved") a.push({ id: "reassign", label: "Reassign" });
+      return a;
+    }
+  });
+</script>
+</body>
+</html>

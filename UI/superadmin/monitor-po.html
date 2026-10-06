@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Purchase order</title>
+<link rel="icon" href="../assets/cyrix-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+<link rel="stylesheet" href="../assets/cyrix-ui.css">
+<link rel="stylesheet" href="sa.css">
+</head>
+<body>
+<main class="content" id="app"></main>
+
+<script src="sa-data.js"></script>
+<script src="../assets/cyrix-shell.js"></script>
+<script src="sa-ui.js"></script>
+<script src="sa-monitor.js"></script>
+<script>
+  SAM.render({
+    kind: "po", title: "Purchase order", sub: "Every purchase order from sign-off to delivery. POs above the approval limit wait for an admin; everything else is signed off by the buyer's team. You can step in on any of them.",
+    statuses: ["Awaiting admin approval", "Awaiting sign-off", "Issued", "In transit", "Delivered", "On hold", "Rejected", "Cancelled"],
+    tone: { "Awaiting admin approval": "warn", Rejected: "bad", "Awaiting sign-off": "warn", Issued: "info", "In transit": "info", Delivered: "good", "On hold": "bad", Cancelled: "bad" },
+    rank: function (r) { return r.status === "Awaiting admin approval" ? 3 : r.status === "Awaiting sign-off" ? 2 : r.status === "On hold" ? 1 : 0; },
+    cols: [
+      { label: "PO", fmt: function (r) { return '<span class="mono">' + r.id + "</span>" + (r.high ? ' <span class="badge warn" title="Above the admin-approval limit">High value</span>' : ""); } },
+      { label: "PI", fmt: function (r) { return '<span class="mono">' + r.pi + "</span>"; } },
+      { label: "Item", fmt: function (r) { return r.item + ' <span class="faint">× ' + r.qty + "</span>"; } },
+      { label: "Vendor", fmt: function (r) { return r.vendor; } },
+      { label: "Value", num: true, fmt: function (r, m) { return r.high ? "<b>" + m(r.value) + "</b>" : m(r.value); } },
+      { label: "Zone", fmt: function (r) { return r.zone; } }
+    ],
+    kpis: function (rows) {
+      var c = function (s) { return rows.filter(function (r) { return r.status === s; }).length; }, hv = rows.filter(function (r) { return r.status === "Awaiting admin approval"; });
+      return [["Awaiting sign-off", c("Awaiting sign-off"), "normal POs for the buyer's team", "pending_actions"], ["Needs admin approval", hv.length, CX.inr(hv.reduce(function (a, r) { return a + r.value; }, 0)) + " above " + CX.inr(SA.POLICY.poThreshold), "verified"], ["In transit", c("In transit"), "on the way", "local_shipping"], ["On hold", c("On hold"), "paused by admin", "pause_circle"]];
+    },
+    actions: function (r) {
+      var set = function (s, verb) { return { run: function (r) { r.status = s; return verb + " " + r.id + " (Super Admin override)"; } }; };
+      if (r.status === "Awaiting admin approval") return SAM.hvActions();
+      if (r.status === "Awaiting sign-off") return [Object.assign({ id: "sign", label: "Sign off & issue", cls: "good" }, set("Issued", "Signed off")), Object.assign({ id: "hold", label: "Hold" }, set("On hold", "Put on hold")), Object.assign({ id: "cancel", label: "Cancel", cls: "danger" }, set("Cancelled", "Cancelled")), { id: "reassign", label: "Reassign" }];
+      if (r.status === "Issued" || r.status === "In transit") return [Object.assign({ id: "hold", label: "Hold" }, set("On hold", "Put on hold"))];
+      if (r.status === "On hold") return [Object.assign({ id: "resume", label: "Resume", cls: "good" }, set("Issued", "Resumed")), Object.assign({ id: "cancel", label: "Cancel", cls: "danger" }, set("Cancelled", "Cancelled"))];
+      return [];
+    }
+  });
+</script>
+</body>
+</html>
