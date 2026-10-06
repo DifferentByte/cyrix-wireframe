@@ -13,7 +13,7 @@
 <main class="content">
   <div class="page-head">
     <div>
-      <div class="crumb">Requisition · Handbook §1, §2, §25</div>
+      <div class="crumb">Requisition</div>
       <h1>Create purchase request</h1>
       <p class="sub">Raised by the Service Coordinator from the PI received from the field. Current calls link to a ticket ID; offline calls use the barcode as the primary reference.</p>
     </div>
@@ -26,7 +26,7 @@
   <div class="split">
     <div class="stack">
       <div class="card">
-        <div class="card-h"><h2>1. Category & purpose</h2><span class="sec-no">§1.1 · §1.2</span></div>
+        <div class="card-h"><h2>1. Category & purpose</h2></div>
         <div class="card-b stack">
           <div class="row">
             <div class="seg" id="cat">
@@ -60,7 +60,7 @@
       </div>
 
       <div class="card">
-        <div class="card-h"><h2>2. Call & equipment reference</h2><span class="sec-no">§2</span></div>
+        <div class="card-h"><h2>2. Call & equipment reference</h2></div>
         <div class="card-b stack">
           <div class="form f3">
             <div class="field" id="ticketField">
@@ -90,20 +90,20 @@
               </div>
             </div>
           </div>
-          <div class="alert bad" id="camcBlock" style="display:none"><b>Part indent blocked.</b>&nbsp;This barcode is under CAMC with the OEM, so spares must be claimed from the CAMC vendor (§19). Raise a service ticket to the CAMC vendor instead.</div>
+          <div class="alert bad" id="camcBlock" style="display:none"><b>Part indent blocked.</b>&nbsp;This barcode is under CAMC with the OEM, so spares must be claimed from the CAMC vendor. Raise a service ticket to the CAMC vendor instead.</div>
           <div id="soBox" style="display:none" class="stack">
             <div class="form f3">
               <div class="field"><label>Sales order (SO) no. <span class="req">*</span></label><input id="so" placeholder="e.g. SO-26-0781"></div>
               <div class="field"><label>Work order no.</label><input placeholder="WO-…"></div>
               <div class="field"><label>&nbsp;</label><button class="btn" id="verifySo">Verify SO in SAP</button></div>
             </div>
-            <div class="alert warn" id="soMsg">A work-order purchase can't proceed until the linked sales order is verified (§25).</div>
+            <div class="alert warn" id="soMsg">A work-order purchase can't proceed until the linked sales order is verified.</div>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-h"><h2>3. Line items</h2><span class="sec-no">§1.2</span><button class="btn sm tag" id="addLine">+ Add line</button></div>
+        <div class="card-h"><h2>3. Line items</h2><button class="btn sm tag" id="addLine">+ Add line</button></div>
         <div class="card-b stack" id="lines">
           <div class="grid" style="grid-template-columns:120px 1fr;gap:14px" data-line>
             <div class="img" data-part="sensor"><span class="cap">SAP image</span></div>
@@ -162,7 +162,7 @@
         <div class="card-h"><h3>What happens next</h3></div>
         <div class="card-b">
           <ul class="tl">
-            <li class="now"><b>Technical verification</b><div class="when">Required before ITR/IPT or PR (§4)</div></li>
+            <li class="now"><b>Technical verification</b><div class="when">Required before ITR/IPT or PR</div></li>
             <li>ITR / IPT from stock, <i>or</i> PR to Purchase</li>
             <li>Previous purchase check & vendor sourcing</li>
             <li>Quotation → comparison → PO</li>
