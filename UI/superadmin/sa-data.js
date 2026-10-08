@@ -285,7 +285,7 @@
 
   var brand = { mark: "C", name: "Cyrix Super Admin", sub: "Access control", href: "index.html", logo: "../assets/cyrix-logo.png" };
   var vr = here === "role-view.html" ? (by(ROLES, param("role")) || ROLES[0]) : null;
-  var cfg = { brand: brand, search: "Search employees, roles or modules…", promo: null, kpiIcons: [] };
+  var cfg = { brand: brand, search: "Search anything…", promo: null, kpiIcons: [] };
   if (vr) {
     // "View as role" demo: sidebar shows only that role's modules (links are inert)
     cfg.search = "Search…";

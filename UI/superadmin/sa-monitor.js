@@ -25,6 +25,8 @@ window.SAM = {
     $("fZone").innerHTML += SA.ZONES.map(function (z) { return "<option>" + z + "</option>"; }).join("");
     $("thead").innerHTML = cfg.cols.map(function (c) { return "<th" + (c.num ? ' class="num"' : "") + ">" + c.label + "</th>"; }).join("") + "<th>Held by</th><th>Status</th><th></th>";
 
+    if (SA.param("q")) $("q").value = SA.param("q");   // arriving from the global search
+
     // Date filter (default: last 1 month) — tiles, table and counts all follow it.
     var range = cfg.dates ? CXR.create($("range"), function () { draw(); }) : null;
     var dated = function () { return range ? rows.filter(function (r) { return range.contains(r.date); }) : rows; };
