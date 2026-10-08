@@ -13,7 +13,7 @@
 <main class="content">
   <div class="page-head">
     <div>
-      <div class="crumb">Orders · Handbook §13</div>
+      <div class="crumb">Orders</div>
       <h1>PO creation & approval</h1>
       <p class="sub">AOS generates the PO request from the finalised vendor. Approval follows the value-based matrix, and the approved PO is pushed to SAP.</p>
     </div>
@@ -98,7 +98,7 @@
       '<li><b>Push to SAP</b>: PO number synced back to AOS</li>';
     var pct = +terms.value;
     document.getElementById("adv").innerHTML = pct
-      ? "<b>Advance applicable:</b> " + pct + "% = " + CX.inr(tot*pct/100) + ". After approval an AP down payment request is raised in SAP (§14)."
+      ? "<b>Advance applicable:</b> " + pct + "% = " + CX.inr(tot*pct/100) + ". After approval an AP down payment request is raised in SAP."
       : "No advance needed under these payment terms.";
   }
   [q,r,terms].forEach(function(e){ e.addEventListener("input", calc); e.addEventListener("change", calc); });
